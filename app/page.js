@@ -5,7 +5,7 @@ import { storeApi, resetDemo } from "./store";
 import { useLang } from "./i18n";
 import { ownerName, policyText } from "../lib/policies";
 import { BANKS, getBank } from "../lib/banks";
-import { STAFF, USERS } from "../lib/staff";
+import { USERS } from "../lib/staff";
 
 const ALERT_ICON = { new: "megaphone", risk: "alert", done: "check", error: "xcircle" };
 const NAV = [["dash", "dashboard"], ["analyze", "scan"], ["history", "history"], ["docs", "folder"], ["policies", "shield"]];
@@ -715,7 +715,7 @@ function Brief({ bank, me, setError }) {
   if (!data) return <div className="card empty">{t.loading}</div>;
   const count = (st) => data.tasks.filter(x => x.status === st).length;
   const titleOfNotice = (packId) => data.notices.find(n => n.packId === packId)?.title || packId;
-  const staff = (id) => { const s = STAFF.find(x => x.id === id); return s ? (lang === "en" ? s.nameEn : s.name) : id; };
+  const staff = (id) => { const s = USERS.find(x => x.id === id); return s ? (lang === "en" ? s.nameEn : s.name) : id; };
   const today = localDate();
   const isOverdue = (x) => ["pending_review", "open"].includes(x.status) && x.dueDate < today;
   const overdue = data.tasks.filter(isOverdue).length;
@@ -789,6 +789,8 @@ function Brief({ bank, me, setError }) {
                 <h4>{x.action}</h4>
                 <p className="muted">{t.brief.assignee} <b>{staff(x.assignee)}</b> · {ownerName(x.owner, lang)} · {t.det.dueBy} {date(x.dueDate)}</p>
                 <p className="muted small">{t.brief.notice}: {titleOfNotice(x.packId)}</p>
+                {x.evidence && <p className="small"><a href={x.evidence} target="_blank" rel="noreferrer">{t.brief.evidence.split(" (")[0]}</a></p>}
+                <TaskDetail task={x} staff={staff} busy={busy === x.taskId} onSave={(body) => saveTask(x.taskId, body)} />
               </div>
               <div className="task-actions">
                 {x.status === "pending_review" && me.role === "manager" && <>
@@ -910,5 +912,34 @@ function Hearings() {
         ))}
       </ul>
     </section>
+  );
+}
+
+/* ================= รายละเอียดงาน: ประวัติ + คอมเมนต์ + ลิงก์หลักฐาน ================= */
+function TaskDetail({ task, staff, busy, onSave }) {
+  const { t, time } = useLang();
+  const [comment, setComment] = useState("");
+  const [evidence, setEvidence] = useState("");
+  const save = async (e) => {
+    e.preventDefault();
+    if (await onSave({ comment, evidence })) { setComment(""); setEvidence(""); }
+  };
+
+  return (
+    <details className="task-detail">
+      <summary>{t.brief.details} ({(task.history || []).length})</summary>
+      <h4 className="small muted">{t.brief.history}</h4>
+      {!(task.history || []).length && <p className="muted small">{t.brief.noHistory}</p>}
+      <ul className="history">
+        {(task.history || []).map((h, i) => (
+          <li key={i}><small className="muted">{time(h.at)}</small> <b>{staff(h.by)}</b> {t.brief.act[h.action] || h.action}{h.text ? `: ${h.text}` : ""}</li>
+        ))}
+      </ul>
+      <form onSubmit={save} className="stack">
+        <textarea rows={2} placeholder={t.brief.comment} value={comment} onChange={e => setComment(e.target.value)} />
+        <input type="url" placeholder={t.brief.evidence} value={evidence} onChange={e => setEvidence(e.target.value)} />
+        <button className="btn ghost sm" disabled={busy || (!comment.trim() && !evidence.trim())}>{t.brief.save}</button>
+      </form>
+    </details>
   );
 }

@@ -296,3 +296,10 @@ dt { color: var(--muted); } dd { margin: 0; }
   details.notice { display: block; }
   details.notice > *:not(summary) { display: block; }
 }
+
+/* ---------- รายละเอียดงาน ---------- */
+.task-detail { margin-top: 8px; }
+.task-detail summary { cursor: pointer; color: var(--accent); font-size: 13.5px; }
+.task-detail textarea, .task-detail input { width: 100%; font: inherit; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; }
+.history { list-style: none; padding: 0; margin: 4px 0 10px; font-size: 13.5px; }
+.history li { padding: 4px 0; border-top: 1px dashed var(--line); }
