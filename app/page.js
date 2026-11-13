@@ -5,7 +5,7 @@ import { storeApi, resetDemo } from "./store";
 import { useLang } from "./i18n";
 import { ownerName, policyText } from "../lib/policies";
 import { BANKS, getBank } from "../lib/banks";
-import { STAFF } from "../lib/staff";
+import { STAFF, USERS } from "../lib/staff";
 
 const ALERT_ICON = { new: "megaphone", risk: "alert", done: "check", error: "xcircle" };
 const NAV = [["dash", "dashboard"], ["analyze", "scan"], ["history", "history"], ["docs", "folder"], ["policies", "shield"]];
@@ -98,6 +98,7 @@ export default function Home() {
   const [busyTask, setBusyTask] = useState("");
   const [ai, setAi] = useState(null);
   const [bankId, setBankId] = useState("demo");
+  const [me, setMe] = useState(undefined);
   const lastUnread = useRef(0);
 
   const flash = (m) => { setToast(m); setTimeout(() => setToast(""), 4000); };
@@ -123,6 +124,8 @@ export default function Home() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   useEffect(() => { const b = localStorage.getItem("fg-bank"); if (b) setBankId(getBank(b).id); }, []);
+  useEffect(() => { fetch("/api/auth").then(r => (r.ok ? r.json() : null)).then(setMe).catch(() => setMe(null)); }, []);
+  const logout = async () => { await fetch("/api/auth", { method: "DELETE" }); setMe(null); };
   const chooseBank = (id) => { setBankId(id); localStorage.setItem("fg-bank", id); setTab("dash"); };
   const bank = getBank(bankId);
 
@@ -162,6 +165,9 @@ export default function Home() {
   const readAll = safe(async () => { await post("/alerts/read", { all: true }); await loadAlerts(); });
   const clickAlert = safe(async (a) => { if (!a.read) post("/alerts/read", { alertId: a.alertId }).then(loadAlerts).catch(() => {}); if (a.regId) openReg(a.regId); });
 
+  if (me === undefined) return <div className="app"><div className="card empty">{t.loading}</div></div>;
+  if (!me) return <Login onDone={setMe} />;
+
   return (
     <div className="app">
       <header className="topbar">
@@ -178,6 +184,7 @@ export default function Home() {
           <div className="lang" role="group" aria-label="Language">
             {["th", "en"].map(l => <button key={l} className={lang === l ? "on" : ""} onClick={() => setLang(l)}>{l.toUpperCase()}</button>)}
           </div>
+          <button className="pill reset" onClick={logout} title={t.auth.logout}>{lang === "en" ? me.nameEn : me.name} · {t.auth.role[me.role]} · {t.auth.logout}</button>
           <div className="bell-wrap">
             <button className="bell" onClick={() => setBellOpen(o => !o)} aria-label={t.alerts}>
               <Icon name="bell" size={20} />{unread > 0 && <em>{unread}</em>}
@@ -213,7 +220,7 @@ export default function Home() {
       {error && <div className="alert">{error} <button className="link" onClick={() => setError("")}>{t.close}</button></div>}
       {toast && <div className="toast">{toast}</div>}
 
-      {tab === "dash" && bank.real && <Brief bank={bank} setError={setError} />}
+      {tab === "dash" && bank.real && <Brief bank={bank} me={me} setError={setError} />}
       {tab === "dash" && !bank.real && <Dashboard ov={ov} feed={feed} watching={watching} onWatch={runWatcher} onOpen={openReg} onReview={review} busyTask={busyTask} />}
       {tab === "analyze" && <Analyze docs={docs} running={running} onRun={runAnalyze} onUploaded={loadDocs} setError={setError} />}
       {tab === "history" && <History regs={ov?.regulations} onOpen={openReg} onRefresh={safe(loadOverview)} />}
@@ -675,7 +682,7 @@ function Policies({ bank }) {
 }
 
 /* ================= สรุปประจำวัน (ธนาคารจริง) ================= */
-function Brief({ bank, setError }) {
+function Brief({ bank, me, setError }) {
   const { t, lang, date, time } = useLang();
   const [data, setData] = useState(null);
   const [running, setRunning] = useState(false);
@@ -693,11 +700,16 @@ function Brief({ bank, setError }) {
     try { const r = await fetch("/api/daily", { method: "POST" }).then(res => res.json()); if (r.error) throw new Error(r.error); if (r.busy) setError(t.brief.busy); await load(); }
     catch (e) { setError(e.message); } finally { setRunning(false); }
   };
-  const setStatus = async (taskId, status) => {
+  const saveTask = async (taskId, body) => {
     setBusy(taskId);
-    try { await fetch("/api/tasks", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ taskId, status }) }); await load(); }
-    catch (e) { setError(e.message); } finally { setBusy(""); }
+    try {
+      const r = await fetch("/api/tasks", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ taskId, ...body }) });
+      if (!r.ok) throw new Error((await r.json()).error);
+      await load();
+      return true;
+    } catch (e) { setError(e.message); return false; } finally { setBusy(""); }
   };
+  const setStatus = (taskId, status) => saveTask(taskId, { status });
 
   if (!data) return <div className="card empty">{t.loading}</div>;
   const count = (st) => data.tasks.filter(x => x.status === st).length;
@@ -710,7 +722,7 @@ function Brief({ bank, setError }) {
       <section className="card">
         <div className="card-head">
           <div><h2 className="ht"><Icon name="radar" />{t.brief.title}</h2><p className="hint">{t.brief.hint}</p></div>
-          <button className="btn primary sm" onClick={runNow} disabled={running}><Icon name={running ? "refresh" : "play"} size={16} className={running ? "spin" : ""} />{running ? t.brief.running : t.brief.run}</button>
+          {me.role === "manager" && <button className="btn primary sm" onClick={runNow} disabled={running}><Icon name={running ? "refresh" : "play"} size={16} className={running ? "spin" : ""} />{running ? t.brief.running : t.brief.run}</button>}
         </div>
         <p className="muted small">{data.lastRun ? t.brief.lastRun(time(data.lastRun.at), data.lastRun) : t.brief.never}</p>
         <p className="hint">{t.brief.publicNote} · <a href={bank.source} target="_blank" rel="noreferrer">{t.brief.source}</a></p>
@@ -770,7 +782,7 @@ function Brief({ bank, setError }) {
                 <p className="muted small">{t.brief.notice}: {titleOfNotice(x.packId)}</p>
               </div>
               <div className="task-actions">
-                {x.status === "pending_review" && <>
+                {x.status === "pending_review" && me.role === "manager" && <>
                   <button className="btn approve sm" disabled={busy === x.taskId} onClick={() => setStatus(x.taskId, "open")}>{t.approve}</button>
                   <button className="btn reject sm" disabled={busy === x.taskId} onClick={() => setStatus(x.taskId, "rejected")}>{t.reject}</button>
                 </>}
@@ -780,6 +792,46 @@ function Brief({ bank, setError }) {
           ))}
         </div>
       </section>
+    </div>
+  );
+}
+
+/* ================= เข้าสู่ระบบ ================= */
+function Login({ onDone }) {
+  const { t, lang, setLang } = useLang();
+  const [userId, setUserId] = useState(USERS[0].id);
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  const submit = async (e) => {
+    e.preventDefault(); setBusy(true); setError("");
+    try {
+      const r = await fetch("/api/auth", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userId, password }) });
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.error);
+      onDone(data);
+    } catch (err) { setError(err.message); } finally { setBusy(false); }
+  };
+
+  return (
+    <div className="login">
+      <form className="card" onSubmit={submit}>
+        <div className="login-head">
+          <span className="logo"><Icon name="shield" size={22} stroke={2} /></span>
+          <div className="lang dark">{["th", "en"].map(l => <button type="button" key={l} className={lang === l ? "on" : ""} onClick={() => setLang(l)}>{l.toUpperCase()}</button>)}</div>
+        </div>
+        <h2>{t.auth.title}</h2>
+        <p className="hint">{t.auth.hint}</p>
+        <label className="field"><span>{t.auth.user}</span>
+          <select value={userId} onChange={e => setUserId(e.target.value)}>
+            {USERS.map(u => <option key={u.id} value={u.id}>{lang === "en" ? u.nameEn : u.name} · {t.auth.role[u.role]}</option>)}
+          </select>
+        </label>
+        <label className="field"><span>{t.auth.password}</span><input type="password" value={password} onChange={e => setPassword(e.target.value)} autoComplete="current-password" required /></label>
+        {error && <p className="alert">{error}</p>}
+        <button className="btn primary" disabled={busy}>{t.auth.submit}</button>
+      </form>
     </div>
   );
 }

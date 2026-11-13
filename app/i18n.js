@@ -65,6 +65,11 @@ const TEXT = {
       download: "ดาวน์โหลด", noInline: "ไฟล์ชนิดนี้แสดงในเบราว์เซอร์ไม่ได้ กดดาวน์โหลดเพื่อเปิด"
     },
     bank: "ธนาคาร",
+    auth: {
+      title: "เข้าสู่ระบบ FinGuard AI", hint: "เลือกชื่อของคุณแล้วใส่รหัสผ่านของบทบาท (หัวหน้า / พนักงาน)",
+      user: "ผู้ใช้", password: "รหัสผ่าน", submit: "เข้าสู่ระบบ", logout: "ออกจากระบบ",
+      role: { manager: "หัวหน้า", staff: "พนักงาน" }
+    },
     brief: {
       nav: "สรุปประจำวัน", title: "สรุปประจำวัน · ประกาศ ธปท. ล่าสุด",
       hint: "ระบบดึงประกาศจาก ธปท. (FIPCS) ทุกวัน 07:30 น. ให้ AI เทียบกับเอกสารนโยบายที่ธนาคารเผยแพร่ แล้วสร้างงานและแบ่งให้พนักงาน",
@@ -141,6 +146,11 @@ const TEXT = {
       download: "Download", noInline: "This file type can't be shown in the browser. Download it to open."
     },
     bank: "Bank",
+    auth: {
+      title: "Sign in to FinGuard AI", hint: "Choose your name and enter your role's password (manager / staff)",
+      user: "User", password: "Password", submit: "Sign in", logout: "Sign out",
+      role: { manager: "Manager", staff: "Staff" }
+    },
     brief: {
       nav: "Daily brief", title: "Daily brief · latest BOT notices",
       hint: "Every day at 07:30 the system pulls BOT notices (FIPCS), lets AI compare them with the bank's published policies, then creates and assigns tasks.",
