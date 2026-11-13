@@ -239,3 +239,14 @@ dt { color: var(--muted); } dd { margin: 0; }
 .lang { display: inline-flex; border: 1px solid rgba(255,255,255,.35); border-radius: 999px; overflow: hidden; }
 .lang button { background: transparent; color: #fff; border: 0; font: inherit; font-size: 12px; padding: 5px 10px; cursor: pointer; }
 .lang button.on { background: #fff; color: #10213f; font-weight: 600; }
+.bank-select { background: transparent; color: #fff; font: inherit; font-size: 12px; cursor: pointer; }
+.bank-select option { color: #10213f; }
+.badge.done { background: var(--ok-soft); color: var(--ok); }
+.notice summary { cursor: pointer; display: flex; flex-direction: column; gap: 4px; list-style: none; }
+.notice summary::-webkit-details-marker { display: none; }
+.notice[open] summary { margin-bottom: 10px; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.ob-row { display: flex; gap: 10px; padding: 8px 0 8px 10px; border-left: 3px solid var(--ok); margin-top: 6px; }
+.ob-row.missing, .ob-row.conflict { border-left-color: var(--bad); }
+.ob-row.partial { border-left-color: var(--warn); }
+.ob-row p { margin: 0 0 2px; }
