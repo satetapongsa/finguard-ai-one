@@ -1,54 +1,53 @@
-# FinGuard AI – Regulatory Compliance Agent (Demo)
+# FinGuard AI – Regulatory Compliance Agent
 
 ผู้ช่วยสำหรับทีม Compliance ของธนาคาร: อ่านประกาศของธนาคารแห่งประเทศไทย (ธปท.)
 แยกเป็นภาระหน้าที่ทีละข้อ แล้วเทียบกับ policy ภายในของธนาคาร ว่าข้อไหน
 **ครอบคลุมแล้ว / ครอบคลุมบางส่วน / ยังไม่มี / ขัดกับ policy** พร้อมสร้างงานให้ฝ่ายที่รับผิดชอบ
 
-> **โหมดจำลอง:** repo นี้เป็นเวอร์ชัน demo ทุกอย่างทำงานในเบราว์เซอร์
-> ไม่เรียก AI หรือ cloud ใด ๆ ข้อมูลเก็บใน `localStorage` ของผู้ใช้เท่านั้น
+ใช้ AI จาก [Groq](https://console.groq.com) วิเคราะห์ประกาศ ถ้ายังไม่ได้ตั้ง API key ระบบจะใช้การวิเคราะห์แบบกฎแทน
+จึงเปิดใช้งานได้ทันที
+
 > ประกาศและ policy ในระบบเป็นตัวอย่างสมมติ ไม่ใช่ประกาศ ธปท. ฉบับจริง
+> ผลวิเคราะห์ งาน และเอกสารเก็บใน `localStorage` ของเบราว์เซอร์ผู้ใช้
 
 ## ฟีเจอร์
 
-- **ภาพรวม (Dashboard)** – สรุปจำนวนประกาศ ช่องว่างที่พบ และงานที่รออนุมัติ
+- **ภาพรวม** – สรุปจำนวนประกาศ ช่องว่างที่พบ งานที่รออนุมัติ และงานค้างแยกตามฝ่าย
 - **วิเคราะห์ประกาศ** – วางเนื้อหาประกาศ เลือกหัวข้อตัวอย่าง หรือเลือกไฟล์จากคลังเอกสาร
-  แล้วให้ Agent วิเคราะห์ พร้อมดู trace ว่าเรียกเครื่องมืออะไรไปบ้าง
-- **Watcher** – จำลองการติดตามประกาศใหม่ (ร่างรับฟังความเห็น / ประกาศใหม่ / ประกาศแก้ไข)
-  และวิเคราะห์ให้อัตโนมัติ พร้อมแจ้งเตือน
-- **Human-in-the-loop** – งานที่ Agent ไม่มั่นใจ (confidence ต่ำ, ขัดกับ policy หรือเป็นร่างประกาศ)
-  จะรอให้คนกดอนุมัติ / ไม่อนุมัติก่อน
-- **ประวัติ** – ดูผลวิเคราะห์ย้อนหลังของแต่ละประกาศ
-- **คลังเอกสาร** – อัปโหลดไฟล์ประกาศหรือ policy (pdf, docx, txt, md, html, csv, xlsx ไม่เกิน 4 MB)
-- **Policy ธนาคาร** – รายการ policy ภายในของธนาคารตัวอย่าง (12 ฉบับ)
+- **Watcher** – ตรวจหาประกาศใหม่จากแหล่งตัวอย่าง แล้ววิเคราะห์ให้อัตโนมัติพร้อมแจ้งเตือน
+- **Human-in-the-loop** – งานที่ AI ไม่มั่นใจ (confidence < 0.8), ขัดกับ policy หรือมาจากร่างประกาศ
+  ต้องให้คนกดอนุมัติก่อนเสมอ กติกานี้บังคับในโค้ด ไม่ได้ปล่อยให้ AI ตัดสินเอง
+- **คลังเอกสาร** – อัปโหลดไฟล์ (ไม่เกิน 4 MB) ไฟล์ PDF และ TXT จะถูกดึงข้อความไปวิเคราะห์ได้
+- **ประวัติ** และ **Policy ธนาคาร** (12 ฉบับตัวอย่าง)
 
-## Agent ทำงานอย่างไร
+## การทำงาน
 
-1. แยกประกาศเป็นข้อ ๆ (`ข้อ 1`, `ข้อ 2`, …)
-2. ดึงภาระหน้าที่: ใครต้องทำ ทำอะไร กำหนดเวลา และวงเงิน → `save_obligation`
-3. ค้น policy ภายในที่ใกล้เคียงที่สุด (bigram matching) → `search_internal_policy`
-4. ตัดสินผล: ไม่พบ policy = ยังไม่มี, เรื่องเดียวกันแต่ตัวเลข/ระยะเวลาไม่ตรง = ขัดแย้ง,
-   ตรงกันมาก = ครอบคลุม, ที่เหลือ = บางส่วน → `save_gap`
-5. สร้างงานให้ฝ่ายเจ้าของ policy โดยกำหนดส่งเท่ากับวันที่ประกาศมีผลบังคับใช้ → `create_task`
+```
+เบราว์เซอร์ (app/page.js, app/store.js)          Next.js API (server)
+  กดวิเคราะห์  ──── POST /api/analyze ────►  lib/agent.js ──► Groq (JSON mode)
+  เก็บผลลง localStorage ◄── obligations, gaps, tasks ──┘
+  อัปโหลด PDF ──── POST /api/extract ────►  unpdf ดึงข้อความ
+```
 
-ในโหมดจำลอง ขั้นตอนเหล่านี้เป็นกฎใน [`app/mock.js`](app/mock.js) ซึ่งมี API รูปแบบเดียวกับ backend จริง
-(`GET /overview`, `POST /run`, `POST /review`, `POST /watch/run`, `GET /documents` ฯลฯ)
-จึงเปลี่ยนไปต่อ API จริงได้โดยแก้ฟังก์ชัน `call()` ใน [`app/page.js`](app/page.js) จุดเดียว
-
-## Tech stack
-
-- Next.js 16 (App Router, static export) + React 19
-- JavaScript และ CSS ล้วน ไม่มี UI library
-- ฟอนต์ IBM Plex Sans Thai
+1. ส่งประกาศและรายการ policy ทั้งหมดให้ Groq ในการเรียก **ครั้งเดียว** (เร็ว ประมาณไม่กี่วินาที)
+2. AI ตอบเป็น JSON: ภาระหน้าที่แต่ละข้อ (ใคร ทำอะไร กำหนดเวลา วงเงิน), สถานะเทียบ policy, เหตุผล และงานที่ต้องทำ
+3. โค้ดตรวจผล: สถานะต้องอยู่ในชุดที่กำหนด, policy ต้องมีอยู่จริง, ผู้รับผิดชอบมาจากเจ้าของ policy,
+   วันกำหนดส่งคือวันที่ประกาศมีผลบังคับใช้ และบังคับกติกา human-in-the-loop
+4. API key อยู่ฝั่ง server เท่านั้น ไม่ถูกส่งไปที่เบราว์เซอร์
 
 ## โครงสร้างโปรเจกต์
 
 ```
 app/
-  layout.js    ฟอนต์และ metadata
-  page.js      หน้าจอทั้งหมด (Dashboard, วิเคราะห์, ประวัติ, คลังเอกสาร, Policy)
-  mock.js      API จำลอง: policy ตัวอย่าง, watcher feed, ตรรกะของ Agent, localStorage
-  globals.css  สไตล์
-next.config.mjs  output: "export" (build เป็นไฟล์ static)
+  page.js               หน้าจอทั้งหมด
+  store.js              ข้อมูลฝั่งเบราว์เซอร์ (localStorage), เรียก /api, วิเคราะห์แบบกฎเมื่อไม่มี key
+  api/analyze/route.js  วิเคราะห์ประกาศด้วย AI
+  api/extract/route.js  ดึงข้อความจาก PDF
+  api/status/route.js   บอกว่าเปิดใช้ AI อยู่หรือไม่
+lib/
+  agent.js              prompt และการตรวจผลจาก AI
+  groq.js               เรียก Groq API
+  policies.js           policy ภายในของธนาคารตัวอย่าง
 ```
 
 ## รันในเครื่อง
@@ -57,23 +56,28 @@ next.config.mjs  output: "export" (build เป็นไฟล์ static)
 
 ```bash
 npm install
+cp .env.example .env.local
+```
+
+ใส่ key จาก https://console.groq.com/keys ใน `.env.local`:
+
+```
+GROQ_API_KEY=gsk_...
+GROQ_MODEL=            # ไม่ใส่ก็ได้ ค่า default อยู่ใน lib/groq.js
+```
+
+```bash
 npm run dev
 ```
 
-เปิด http://localhost:3000
+เปิด http://localhost:3000 มุมขวาบนจะแสดง `AI · Groq · <model>` เมื่อเชื่อมต่อแล้ว
 
-Build เป็นไฟล์ static (ได้โฟลเดอร์ `out/`):
+## Deploy บน Vercel
 
-```bash
-npm run build
-npm start
-```
+1. Import repo นี้ใน Vercel
+2. Settings → Environment Variables ใส่ `GROQ_API_KEY` (และ `GROQ_MODEL` ถ้าต้องการ)
+3. Deploy
 
-## Deploy
+## รีเซ็ตข้อมูล
 
-Import repo นี้ใน Vercel แล้วกด Deploy ได้เลย ไม่ต้องตั้ง Environment Variables
-
-## รีเซ็ตข้อมูลจำลอง
-
-ข้อมูลทั้งหมดอยู่ใน `localStorage` key `fg-demo-v1` กดปุ่ม **รีเซ็ตข้อมูล** ในแอป
-หรือล้าง site data ของเบราว์เซอร์เพื่อเริ่มใหม่
+กดปุ่ม **รีเซ็ตข้อมูล** ในแอป หรือล้าง site data ของเบราว์เซอร์
