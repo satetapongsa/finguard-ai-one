@@ -593,7 +593,7 @@ function Docs({ docs, onRefresh, setError, onAnalyze }) {
       <aside className="col">
         <section className="card">
           <h2 className="ht"><Icon name="upload" />อัปโหลดเอกสาร</h2>
-          <p className="hint">เก็บในเบราว์เซอร์ · PDF, DOCX, TXT ไม่เกิน 4 MB</p>
+          <p className="hint">เก็บในเบราว์เซอร์ · ไม่เกิน 4 MB · PDF และ TXT ส่งให้ AI วิเคราะห์ได้</p>
           <div className="seg">
             <button className={kind === "regulation" ? "on" : ""} onClick={() => setKind("regulation")}>ประกาศ ธปท.</button>
             <button className={kind === "policy" ? "on" : ""} onClick={() => setKind("policy")}>Policy ธนาคาร</button>

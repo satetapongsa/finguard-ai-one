@@ -33,6 +33,7 @@ export function resetDemo() { mem = blank(); seed(); save(); }
 const now = () => new Date().toISOString();
 const clone = (x) => JSON.parse(JSON.stringify(x));
 const toB64 = (s) => btoa(unescape(encodeURIComponent(s)));
+const post = (url, body) => fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }).then(r => r.json());
 
 // ---------- วิเคราะห์แบบกฎ (ใช้เมื่อยังไม่ได้ตั้ง GROQ_API_KEY) ----------
 const nums = (s) => (String(s).match(/\d[\d,]*/g) || []).map(n => n.replace(/,/g, ""));
@@ -188,6 +189,7 @@ export async function mockApi(path, options = {}) {
       if (size > 4 * 1024 * 1024) bad("ไฟล์ใหญ่เกิน 4 MB");
       let text = null;
       if (["txt", "md", "csv"].includes(ext)) { try { text = decodeURIComponent(escape(atob(body.dataBase64))); } catch {} }
+      if (ext === "pdf") text = (await post("/api/extract", { dataBase64: body.dataBase64 })).text || null;
       const key = `docs/${body.kind === "policy" ? "policy" : "regulation"}/${Date.now()}-${body.fileName}`;
       s.docs.push({ key, name: body.fileName, kind: body.kind === "policy" ? "policy" : "regulation", size, lastModified: now(), contentType: body.contentType || "application/octet-stream", dataBase64: body.dataBase64, text });
       return out({ key, size });
