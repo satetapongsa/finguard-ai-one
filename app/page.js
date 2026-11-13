@@ -98,6 +98,7 @@ export default function Home() {
   const [running, setRunning] = useState(false);
   const [watching, setWatching] = useState(false);
   const [busyTask, setBusyTask] = useState("");
+  const [ai, setAi] = useState(null);
   const lastUnread = useRef(0);
 
   const flash = (m) => { setToast(m); setTimeout(() => setToast(""), 4000); };
@@ -114,7 +115,7 @@ export default function Home() {
 
   useEffect(() => {
     safe(async () => {
-      await Promise.all([loadAlerts(), loadOverview(), loadFeed(), loadDocs(), get("/policies").then(r => setPolicies(r.policies || []))]);
+      await Promise.all([loadAlerts(), loadOverview(), loadFeed(), loadDocs(), get("/policies").then(r => setPolicies(r.policies || [])), get("/status").then(setAi)]);
     })();
     const t = setInterval(async () => {
       try { const u = await loadAlerts(); if (u > lastUnread.current) { loadOverview(); loadFeed(); } lastUnread.current = u; } catch {}
@@ -167,7 +168,7 @@ export default function Home() {
           <div><h1>FinGuard AI</h1><p>Regulatory Compliance Agent · ประกาศ ธปท. → ภาระหน้าที่ → gap → งาน</p></div>
         </div>
         <div className="top-right">
-          <span className="pill">โหมดจำลอง</span>
+          <span className="pill">{ai?.ai ? `AI · Groq · ${ai.model}` : "โหมดจำลอง"}</span>
           <button className="pill reset" onClick={() => { if (confirm("ล้างข้อมูลจำลองทั้งหมดแล้วเริ่มใหม่?")) { resetDemo(); location.reload(); } }}>รีเซ็ตข้อมูล</button>
           <div className="bell-wrap">
             <button className="bell" onClick={() => setBellOpen(o => !o)} aria-label="การแจ้งเตือน">
@@ -193,7 +194,7 @@ export default function Home() {
         </div>
       </header>
 
-      <div className="demo-banner">เวอร์ชันทดลองเล่น: ข้อมูลและผลวิเคราะห์ทั้งหมดเป็นการจำลองในเบราว์เซอร์ ไม่ได้เรียก AI หรือระบบจริง</div>
+      {ai && !ai.ai && <div className="demo-banner">ยังไม่ได้ตั้ง GROQ_API_KEY: ระบบใช้การวิเคราะห์แบบกฎแทน AI</div>}
 
       <nav className="nav">
         {NAV.map(([k, label, icon]) => (
@@ -239,7 +240,7 @@ function Dashboard({ ov, feed, watching, onWatch, onOpen, onReview, busyTask }) 
       <div className="dash-grid">
         <section className="card">
           <div className="card-head">
-            <div><h2 className="ht"><Icon name="radar" />Watcher ติดตามประกาศ ธปท.</h2><p className="hint">ในระบบจริงตรวจอัตโนมัติทุกวัน · หน้านี้เป็นข้อมูลจำลอง</p></div>
+            <div><h2 className="ht"><Icon name="radar" />Watcher ติดตามประกาศ ธปท.</h2><p className="hint">แหล่งประกาศตัวอย่าง · กดตรวจหาเพื่อให้ AI วิเคราะห์ฉบับใหม่</p></div>
             <button className="btn primary sm" onClick={onWatch} disabled={watching}><Icon name={watching ? "refresh" : "search"} size={16} className={watching ? "spin" : ""} />{watching ? "กำลังตรวจและวิเคราะห์..." : "ตรวจหาประกาศใหม่ตอนนี้"}</button>
           </div>
           <ul className="feed">
@@ -316,7 +317,7 @@ function Analyze({ docs, running, onRun, onUploaded, setError }) {
   }, []);
   useEffect(() => {
     if (!running) return; setStep(0);
-    const t = setInterval(() => setStep(s => Math.min(s + 1, RUN_STEPS.length - 1)), 4000);
+    const t = setInterval(() => setStep(s => Math.min(s + 1, RUN_STEPS.length - 1)), 800);
     return () => clearInterval(t);
   }, [running]);
 
@@ -397,7 +398,7 @@ function Analyze({ docs, running, onRun, onUploaded, setError }) {
         {running && (
           <div className="card">
             <h2>Agent กำลังทำงาน</h2>
-            <p className="hint">ใช้เวลาประมาณ 15 วินาที ถึง 2 นาที ผลจะเปิดให้อัตโนมัติ</p>
+            <p className="hint">ใช้เวลาไม่กี่วินาที ผลจะเปิดให้อัตโนมัติ</p>
             <ol className="steps">{RUN_STEPS.map((s, i) => <li key={s} className={i < step ? "done" : i === step ? "now" : ""}>{s}</li>)}</ol>
           </div>
         )}
@@ -503,7 +504,7 @@ function Detail({ d, onBack, onReview, busyTask, policies }) {
 
       {tab === "trace" && (
         <div className="card">
-          <p className="hint">ทุกขั้นด้านล่าง Agent เลือกเครื่องมือเองจากเนื้อหาประกาศ ไม่ได้เขียนลำดับตายตัวไว้ในโค้ด</p>
+          <p className="hint">ขั้นตอนที่ Agent ทำกับประกาศฉบับนี้</p>
           <ol className="trace">
             {trace.map((s, i) => (
               <li key={i}>
@@ -530,7 +531,7 @@ function History({ regs, onOpen, onRefresh }) {
   return (
     <section className="card">
       <div className="card-head">
-        <div><h2 className="ht"><Icon name="history" />ประวัติการวิเคราะห์</h2><p className="hint">โหมดจำลอง: เก็บในเบราว์เซอร์นี้เท่านั้น</p></div>
+        <div><h2 className="ht"><Icon name="history" />ประวัติการวิเคราะห์</h2><p className="hint">เก็บในเบราว์เซอร์นี้เท่านั้น</p></div>
         <div className="row-inline"><input className="search" placeholder="ค้นหาชื่อหรือรหัส" value={q} onChange={e => setQ(e.target.value)} /><button className="btn ghost sm" onClick={onRefresh}><Icon name="refresh" size={15} />รีเฟรช</button></div>
       </div>
       {!regs && <p className="muted">กำลังโหลด...</p>}
@@ -592,7 +593,7 @@ function Docs({ docs, onRefresh, setError, onAnalyze }) {
       <aside className="col">
         <section className="card">
           <h2 className="ht"><Icon name="upload" />อัปโหลดเอกสาร</h2>
-          <p className="hint">โหมดจำลอง: เก็บในเบราว์เซอร์ · PDF, DOCX, TXT ไม่เกิน 4 MB · ไฟล์ .txt จะถูกนำไปวิเคราะห์จริงในโหมดจำลอง</p>
+          <p className="hint">เก็บในเบราว์เซอร์ · PDF, DOCX, TXT ไม่เกิน 4 MB</p>
           <div className="seg">
             <button className={kind === "regulation" ? "on" : ""} onClick={() => setKind("regulation")}>ประกาศ ธปท.</button>
             <button className={kind === "policy" ? "on" : ""} onClick={() => setKind("policy")}>Policy ธนาคาร</button>
@@ -636,7 +637,7 @@ function Policies({ policies }) {
   return (
     <section className="card">
       <h2 className="ht"><Icon name="shield" />Policy ภายในของ Bank A ({policies.length} ข้อ)</h2>
-      <p className="hint">ข้อมูลจำลองสำหรับ demo · Agent ค้นจากชุดนี้ด้วยเครื่องมือ search_internal_policy</p>
+      <p className="hint">Policy ของธนาคารตัวอย่าง · Agent เทียบประกาศกับชุดนี้</p>
       <div className="table-wrap">
         <table className="table static">
           <thead><tr><th>รหัส</th><th>หัวข้อ</th><th>ข้อกำหนด</th><th>หน่วยงาน</th></tr></thead>
