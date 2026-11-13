@@ -740,6 +740,8 @@ function Brief({ bank, me, setError }) {
         <div className="stat ok"><Icon name="check" className="si" /><b>{count("done")}</b><span>{t.brief.stats.done}</span></div>
       </section>
 
+      <Hearings />
+
       <Report bank={bank} data={data} staff={staff} isOverdue={isOverdue} />
 
       <section className="card">
@@ -878,6 +880,35 @@ function Report({ bank, data, staff, isOverdue }) {
         <div><h3 className="small muted">{t.brief.byDept}</h3>{byDept.length ? bars(byDept) : <p className="muted">{t.noPending}</p>}</div>
         <div><h3 className="small muted">{t.brief.byMonth}</h3>{byMonth.length ? bars(byMonth) : <p className="muted">{t.noData}</p>}</div>
       </div>
+    </section>
+  );
+}
+
+/* ================= ร่างประกาศที่เปิดรับฟังความเห็น ================= */
+function Hearings() {
+  const { t, date } = useLang();
+  const [list, setList] = useState(null);
+  const [error, setError] = useState("");
+  useEffect(() => {
+    fetch("/api/hearings").then(r => r.json()).then(r => (r.error ? setError(r.error) : setList(r.hearings))).catch(e => setError(e.message));
+  }, []);
+
+  return (
+    <section className="card">
+      <h2 className="ht"><Icon name="megaphone" />{t.brief.hearings}</h2>
+      <p className="hint">{t.brief.hearingsHint}</p>
+      {error && <p className="muted">{error}</p>}
+      {!list && !error && <p className="muted">{t.loading}</p>}
+      {list?.length === 0 && <p className="muted">{t.brief.noHearings}</p>}
+      <ul className="timeline">
+        {(list || []).map(h => (
+          <li key={h.url}>
+            <span className={`days ${h.daysLeft <= 3 ? "hot" : h.daysLeft <= 14 ? "warm" : ""}`}>{t.brief.daysLeft(h.daysLeft)}</span>
+            <a href={h.url} target="_blank" rel="noreferrer">{h.title}</a>
+            <small className="muted">{t.brief.closes} {date(h.to)}</small>
+          </li>
+        ))}
+      </ul>
     </section>
   );
 }
