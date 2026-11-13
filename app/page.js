@@ -671,7 +671,7 @@ function Policies({ bank }) {
   return (
     <section className="card">
       <h2 className="ht"><Icon name="shield" />{bank.real ? `${bankName(bank, lang)} (${bank.policies.length})` : t.pol.title(bank.policies.length)}</h2>
-      <p className="hint">{bank.real ? <>{t.brief.publicNote} · <a href={bank.source} target="_blank" rel="noreferrer">{t.brief.source}</a></> : t.pol.hint}</p>
+      <p className="hint">{bank.real ? <>{t.brief.publicNote} · {bank.sources.map((u, i) => <a key={u} href={u} target="_blank" rel="noreferrer">{t.brief.source} {i + 1} </a>)}</> : t.pol.hint}</p>
       <div className="table-wrap">
         <table className="table static">
           <thead><tr>{t.pol.cols.map(c => <th key={c}>{c}</th>)}</tr></thead>
@@ -729,7 +729,7 @@ function Brief({ bank, me, setError }) {
           {me.role === "manager" && <button className="btn primary sm" onClick={runNow} disabled={running}><Icon name={running ? "refresh" : "play"} size={16} className={running ? "spin" : ""} />{running ? t.brief.running : t.brief.run}</button>}
         </div>
         <p className="muted small">{data.lastRun ? t.brief.lastRun(time(data.lastRun.at), data.lastRun) : t.brief.never}</p>
-        <p className="hint">{t.brief.publicNote} · <a href={bank.source} target="_blank" rel="noreferrer">{t.brief.source}</a></p>
+        <p className="hint">{t.brief.publicNote} · {bank.sources.map((u, i) => <a key={u} href={u} target="_blank" rel="noreferrer">{t.brief.source} {i + 1} </a>)}</p>
       </section>
 
       <section className="stats">
