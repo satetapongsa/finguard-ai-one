@@ -112,7 +112,7 @@ async function analyze(form) {
   const text = String(form.regText || "").trim() || s.docs.find(d => d.key === form.docKey)?.text || "";
   if (!text.trim()) throw Object.assign(new Error("ใส่เนื้อหาประกาศ หรือเลือกเอกสารที่อ่านข้อความได้"), { status: 400 });
 
-  const res = await fetch("/api/analyze", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ title: reg.title, stage: reg.stage, regText: text, lang: form.lang }) });
+  const res = await fetch("/api/analyze", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ title: reg.title, stage: reg.stage, regText: text, lang: form.lang, bankId: form.bankId }) });
   if (res.status === 503) return saveResult(reg, analyzeByRules(text, reg.stage), "rules");
   const data = await res.json();
   if (!res.ok) throw new Error(data.error || "วิเคราะห์ไม่สำเร็จ");
