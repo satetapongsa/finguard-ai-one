@@ -64,6 +64,19 @@ const TEXT = {
       opening: "กำลังเปิด", open: "เปิดดู", analyze: "วิเคราะห์", viewerEmpty: "กด “เปิดดู” ที่เอกสารเพื่อแสดงตรงนี้",
       download: "ดาวน์โหลด", noInline: "ไฟล์ชนิดนี้แสดงในเบราว์เซอร์ไม่ได้ กดดาวน์โหลดเพื่อเปิด"
     },
+    bank: "ธนาคาร",
+    brief: {
+      nav: "สรุปประจำวัน", title: "สรุปประจำวัน · ประกาศ ธปท. ล่าสุด",
+      hint: "ระบบดึงประกาศจาก ธปท. (FIPCS) ทุกวัน 07:30 น. ให้ AI เทียบกับเอกสารนโยบายที่ธนาคารเผยแพร่ แล้วสร้างงานและแบ่งให้พนักงาน",
+      lastRun: (d, r) => `รันล่าสุด ${d} · ประกาศใหม่ ${r.newNotices.length} ฉบับ · วิเคราะห์ ${r.analyzed} รายการ · งานใหม่ ${r.tasksCreated} งาน${r.remaining ? ` · เหลือในคิว ${r.remaining}` : ""}`,
+      never: "ยังไม่เคยรัน กด “รันตอนนี้” เพื่อดึงประกาศล่าสุด",
+      run: "รันตอนนี้", running: "กำลังดึงและวิเคราะห์ (1–4 นาที)...",
+      notices: "ประกาศ ธปท. ที่ติดตาม", noNotices: "ยังไม่มีประกาศ", pdf: "เปิด PDF", queued: "รอวิเคราะห์", notApplicable: "ไม่มีข้อที่ใช้กับธนาคารพาณิชย์",
+      tasks: "งานที่แบ่งให้พนักงาน", noTasks: "ยังไม่มีงาน", assignee: "ผู้รับงาน", notice: "ประกาศ", done: "เสร็จแล้ว", markDone: "ปิดงาน",
+      stats: { notices: "ประกาศที่ติดตาม", pending: "รออนุมัติ", open: "กำลังทำ", done: "เสร็จแล้ว" },
+      status: { pending_review: "รออนุมัติ", open: "กำลังทำ", done: "เสร็จแล้ว", rejected: "ไม่อนุมัติ" },
+      publicNote: "เทียบกับเอกสารนโยบายที่ธนาคารเผยแพร่ต่อสาธารณะ ไม่ใช่ policy ภายในจริง งานทุกงานจึงต้องให้คนอนุมัติก่อน", source: "ที่มา"
+    },
     pol: { title: (n) => `Policy ภายในของ Bank A (${n} ข้อ)`, hint: "Policy ของธนาคารตัวอย่าง · Agent เทียบประกาศกับชุดนี้", cols: ["รหัส", "หัวข้อ", "ข้อกำหนด", "หน่วยงาน"] }
   },
   en: {
@@ -126,6 +139,19 @@ const TEXT = {
       regulation: "BOT regulation", policy: "Bank policy", choose: "Choose a file to upload", all: (n) => `All documents (${n})`, empty: "No documents yet",
       opening: "Opening", open: "Open", analyze: "Analyze", viewerEmpty: "Click “Open” on a document to show it here",
       download: "Download", noInline: "This file type can't be shown in the browser. Download it to open."
+    },
+    bank: "Bank",
+    brief: {
+      nav: "Daily brief", title: "Daily brief · latest BOT notices",
+      hint: "Every day at 07:30 the system pulls BOT notices (FIPCS), lets AI compare them with the bank's published policies, then creates and assigns tasks.",
+      lastRun: (d, r) => `Last run ${d} · ${r.newNotices.length} new notices · ${r.analyzed} analyses · ${r.tasksCreated} new tasks${r.remaining ? ` · ${r.remaining} queued` : ""}`,
+      never: "Not run yet. Click “Run now” to pull the latest notices.",
+      run: "Run now", running: "Fetching and analyzing (1–4 min)...",
+      notices: "Tracked BOT notices", noNotices: "No notices yet", pdf: "Open PDF", queued: "Queued", notApplicable: "No clauses apply to commercial banks",
+      tasks: "Tasks assigned to staff", noTasks: "No tasks yet", assignee: "Assignee", notice: "Notice", done: "Done", markDone: "Mark done",
+      stats: { notices: "Tracked notices", pending: "Need approval", open: "In progress", done: "Done" },
+      status: { pending_review: "Needs approval", open: "In progress", done: "Done", rejected: "Rejected" },
+      publicNote: "Compared with the bank's publicly published policy statements, not its real internal policies, so every task needs human approval.", source: "Source"
     },
     pol: { title: (n) => `Bank A internal policies (${n})`, hint: "Sample bank policies · the agent compares regulations against these", cols: ["ID", "Title", "Requirement", "Department"] }
   }
