@@ -75,6 +75,7 @@ const post = (p, body) => call(p, { method: "POST", body: JSON.stringify(body ||
 
 const stamp = () => { const d = new Date(); const p = (n) => String(n).padStart(2, "0"); return `${p(d.getMonth() + 1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}`; };
 const pct = (v) => `${Math.round((Number(v) || 0) * 100)}%`;
+const localDate = () => new Date().toLocaleDateString("sv"); // YYYY-MM-DD ตามเวลาเครื่อง
 const daysUntil = (s) => Math.ceil((new Date(s) - new Date()) / 86400000);
 const fmtSize = (n) => n > 1048576 ? `${(n / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1024))} KB`;
 const fileToBase64 = (file) => new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result).split(",")[1]); r.onerror = () => rej(new Error("อ่านไฟล์ไม่สำเร็จ")); r.readAsDataURL(file); });
@@ -715,6 +716,9 @@ function Brief({ bank, me, setError }) {
   const count = (st) => data.tasks.filter(x => x.status === st).length;
   const titleOfNotice = (packId) => data.notices.find(n => n.packId === packId)?.title || packId;
   const staff = (id) => { const s = STAFF.find(x => x.id === id); return s ? (lang === "en" ? s.nameEn : s.name) : id; };
+  const today = localDate();
+  const isOverdue = (x) => ["pending_review", "open"].includes(x.status) && x.dueDate < today;
+  const overdue = data.tasks.filter(isOverdue).length;
   const tasks = [...data.tasks].sort((a, b) => ["pending_review", "open", "done", "rejected"].indexOf(a.status) - ["pending_review", "open", "done", "rejected"].indexOf(b.status));
 
   return (
@@ -728,12 +732,15 @@ function Brief({ bank, me, setError }) {
         <p className="hint">{t.brief.publicNote} · <a href={bank.source} target="_blank" rel="noreferrer">{t.brief.source}</a></p>
       </section>
 
-      <section className="stats four">
+      <section className="stats">
+        <div className="stat bad"><Icon name="alert" className="si" /><b>{overdue}</b><span>{t.brief.overdue}</span></div>
         <div className="stat"><Icon name="file" className="si" /><b>{data.notices.length}</b><span>{t.brief.stats.notices}</span></div>
         <div className="stat focus"><Icon name="clipboard" className="si" /><b>{count("pending_review")}</b><span>{t.brief.stats.pending}</span></div>
         <div className="stat warn"><Icon name="users" className="si" /><b>{count("open")}</b><span>{t.brief.stats.open}</span></div>
         <div className="stat ok"><Icon name="check" className="si" /><b>{count("done")}</b><span>{t.brief.stats.done}</span></div>
       </section>
+
+      <Report bank={bank} data={data} staff={staff} isOverdue={isOverdue} />
 
       <section className="card">
         <h2 className="ht"><Icon name="file" />{t.brief.notices}</h2>
@@ -776,7 +783,7 @@ function Brief({ bank, me, setError }) {
           {tasks.map(x => (
             <div key={x.taskId} className={`card task ${x.status}`}>
               <div className="task-main">
-                <span className={`badge ${x.status}`}>{t.brief.status[x.status]}</span>
+                <span className={`badge ${x.status}`}>{t.brief.status[x.status]}{isOverdue(x) ? ` · ${t.brief.overdue}` : ""}</span>
                 <h4>{x.action}</h4>
                 <p className="muted">{t.brief.assignee} <b>{staff(x.assignee)}</b> · {ownerName(x.owner, lang)} · {t.det.dueBy} {date(x.dueDate)}</p>
                 <p className="muted small">{t.brief.notice}: {titleOfNotice(x.packId)}</p>
@@ -833,5 +840,44 @@ function Login({ onDone }) {
         <button className="btn primary" disabled={busy}>{t.auth.submit}</button>
       </form>
     </div>
+  );
+}
+
+/* ================= รายงาน: กราฟ + ส่งออก CSV + พิมพ์ ================= */
+function Report({ bank, data, staff, isOverdue }) {
+  const { t, lang } = useLang();
+  const open = data.tasks.filter(x => ["pending_review", "open"].includes(x.status));
+  const count = (list, key) => Object.entries(list.reduce((m, x) => ({ ...m, [key(x)]: (m[key(x)] || 0) + 1 }), {})).sort((a, b) => b[1] - a[1]);
+  const byDept = count(open, x => ownerName(x.owner, lang));
+  const byMonth = count(data.notices, n => n.date.slice(0, 7)).sort((a, b) => a[0].localeCompare(b[0]));
+  const bars = (rows) => {
+    const max = Math.max(1, ...rows.map(r => r[1]));
+    return <ul className="bars">{rows.map(([k, n]) => <li key={k}><span>{k}</span><div className="bar"><i style={{ width: `${(n / max) * 100}%` }} /></div><b>{n}</b></li>)}</ul>;
+  };
+
+  const exportCsv = () => {
+    const title = (id) => data.notices.find(n => n.packId === id)?.title || id;
+    const rows = data.tasks.map(x => [bankName(bank, lang), title(x.packId), x.action, ownerName(x.owner, lang), staff(x.assignee), t.brief.status[x.status] + (isOverdue(x) ? ` (${t.brief.overdue})` : ""), x.dueDate, x.evidence || ""]);
+    const csv = [t.brief.csvCols, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\r\n");
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8" })); // BOM ให้ Excel อ่านภาษาไทยถูก
+    a.download = `finguard-${bank.id}-${localDate()}.csv`;
+    a.click(); URL.revokeObjectURL(a.href);
+  };
+
+  return (
+    <section className="card">
+      <div className="card-head">
+        <h2 className="ht"><Icon name="layers" />{t.brief.report}</h2>
+        <div className="row-inline no-print">
+          <button className="btn ghost sm" onClick={exportCsv}><Icon name="download" size={15} />{t.brief.exportCsv}</button>
+          <button className="btn ghost sm" onClick={() => window.print()}><Icon name="file" size={15} />{t.brief.print}</button>
+        </div>
+      </div>
+      <div className="dash-grid">
+        <div><h3 className="small muted">{t.brief.byDept}</h3>{byDept.length ? bars(byDept) : <p className="muted">{t.noPending}</p>}</div>
+        <div><h3 className="small muted">{t.brief.byMonth}</h3>{byMonth.length ? bars(byMonth) : <p className="muted">{t.noData}</p>}</div>
+      </div>
+    </section>
   );
 }

@@ -80,6 +80,9 @@ const TEXT = {
       tasks: "งานที่แบ่งให้พนักงาน", noTasks: "ยังไม่มีงาน", assignee: "ผู้รับงาน", notice: "ประกาศ", done: "เสร็จแล้ว", markDone: "ปิดงาน",
       stats: { notices: "ประกาศที่ติดตาม", pending: "รออนุมัติ", open: "กำลังทำ", done: "เสร็จแล้ว" },
       status: { pending_review: "รออนุมัติ", open: "กำลังทำ", done: "เสร็จแล้ว", rejected: "ไม่อนุมัติ" },
+      report: "รายงาน", byDept: "งานค้างแยกตามฝ่าย", byMonth: "ประกาศที่ติดตามรายเดือน", overdue: "เลยกำหนด",
+      exportCsv: "ส่งออก Excel (CSV)", print: "พิมพ์ / บันทึก PDF",
+      csvCols: ["ธนาคาร", "ประกาศ", "งาน", "ฝ่าย", "ผู้รับงาน", "สถานะ", "กำหนดเสร็จ", "หลักฐาน"],
       publicNote: "เทียบกับเอกสารนโยบายที่ธนาคารเผยแพร่ต่อสาธารณะ ไม่ใช่ policy ภายในจริง งานทุกงานจึงต้องให้คนอนุมัติก่อน", source: "ที่มา"
     },
     pol: { title: (n) => `Policy ภายในของ Bank A (${n} ข้อ)`, hint: "Policy ของธนาคารตัวอย่าง · Agent เทียบประกาศกับชุดนี้", cols: ["รหัส", "หัวข้อ", "ข้อกำหนด", "หน่วยงาน"] }
@@ -161,6 +164,9 @@ const TEXT = {
       tasks: "Tasks assigned to staff", noTasks: "No tasks yet", assignee: "Assignee", notice: "Notice", done: "Done", markDone: "Mark done",
       stats: { notices: "Tracked notices", pending: "Need approval", open: "In progress", done: "Done" },
       status: { pending_review: "Needs approval", open: "In progress", done: "Done", rejected: "Rejected" },
+      report: "Report", byDept: "Open tasks by department", byMonth: "Tracked notices by month", overdue: "Overdue",
+      exportCsv: "Export Excel (CSV)", print: "Print / save PDF",
+      csvCols: ["Bank", "Notice", "Task", "Department", "Assignee", "Status", "Due", "Evidence"],
       publicNote: "Compared with the bank's publicly published policy statements, not its real internal policies, so every task needs human approval.", source: "Source"
     },
     pol: { title: (n) => `Bank A internal policies (${n})`, hint: "Sample bank policies · the agent compares regulations against these", cols: ["ID", "Title", "Requirement", "Department"] }

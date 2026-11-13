@@ -287,3 +287,12 @@ dt { color: var(--muted); } dd { margin: 0; }
 .lang.dark { border-color: var(--line); }
 .lang.dark button { color: var(--ink); }
 .lang.dark button.on { background: var(--navy); color: #fff; }
+
+/* ---------- พิมพ์ / บันทึก PDF ---------- */
+@media print {
+  .topbar, .nav, .demo-banner, .no-print, .task-actions, .btn, .bell-wrap { display: none !important; }
+  .app { max-width: none; padding: 0; }
+  .card { break-inside: avoid; border-color: #ccc; }
+  details.notice { display: block; }
+  details.notice > *:not(summary) { display: block; }
+}
