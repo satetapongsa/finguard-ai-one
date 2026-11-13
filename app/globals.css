@@ -124,7 +124,7 @@ dt { color: var(--muted); } dd { margin: 0; }
 .trace p { margin: 2px 0 4px; font-size: 14px; }
 
 /* ===== v2 ===== */
-.top-right { display: flex; align-items: center; gap: 12px; }
+.top-right { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .bell-wrap { position: relative; }
 .bell { position: relative; background: rgba(255,255,255,.12); border: 0; border-radius: 10px; width: 40px; height: 40px; font-size: 18px; }
 .bell em { position: absolute; top: -4px; right: -4px; background: #e5484d; color: #fff; font-style: normal; font-size: 11px; min-width: 18px; height: 18px; border-radius: 9px; display: grid; place-items: center; padding: 0 4px; }
@@ -250,3 +250,31 @@ dt { color: var(--muted); } dd { margin: 0; }
 .ob-row.missing, .ob-row.conflict { border-left-color: var(--bad); }
 .ob-row.partial { border-left-color: var(--warn); }
 .ob-row p { margin: 0 0 2px; }
+
+/* ---------- แท็บเล็ตและมือถือ ---------- */
+@media (max-width: 900px) {
+  .top-right { width: 100%; }
+  .bell-wrap { margin-left: auto; }
+}
+@media (max-width: 640px) {
+  .app { padding: 12px 10px 32px; }
+  .topbar { padding: 12px; gap: 10px; margin-bottom: 12px; }
+  .brand p { display: none; }
+  .top-right { gap: 8px; }
+  .top-right > .pill:first-child { order: 9; flex-basis: 100%; text-align: center; }
+  .bank-select { flex: 1; min-width: 0; }
+  .bell-panel { position: fixed; left: 8px; right: 8px; top: 64px; width: auto; }
+  .card { padding: 14px 12px; }
+  .topics, .row2 { grid-template-columns: 1fr; }
+  .feed li { grid-template-columns: 1fr auto; }
+  .feed li .stage { grid-column: 1 / -1; justify-self: start; }
+  .timeline li { grid-template-columns: 56px 1fr; }
+  .timeline li small { grid-column: 2; }
+  .bars li { grid-template-columns: 1fr 1fr 20px; }
+  .doclist li { grid-template-columns: 36px 1fr; }
+  .doc-actions { grid-column: 2; }
+  .task-actions { width: 100%; }
+  .task-actions .btn { flex: 1; }
+  .card-head .btn { width: 100%; justify-content: center; }
+  .ob-row { flex-direction: column; gap: 4px; }
+}
