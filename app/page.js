@@ -550,7 +550,8 @@ function Detail({ d, onBack, onReview, busyTask }) {
 function History({ regs, onOpen, onRefresh }) {
   const { t, lang, date, time } = useLang();
   const [q, setQ] = useState("");
-  const list = (regs || []).filter(r => !q || `${r.title} ${r.titleEn || ""} ${r.regId}`.toLowerCase().includes(q.toLowerCase()));
+  const list = (regs || []).filter(r => !q || `${r.title} ${r.titleEn || ""} ${r.regId}`.toLowerCase().includes(q.toLowerCase()))
+    .sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
   return (
     <section className="card">
       <div className="card-head">
@@ -689,7 +690,7 @@ function Brief({ bank, setError }) {
 
   const runNow = async () => {
     setRunning(true); setError("");
-    try { const r = await fetch("/api/daily", { method: "POST" }).then(res => res.json()); if (r.error) throw new Error(r.error); await load(); }
+    try { const r = await fetch("/api/daily", { method: "POST" }).then(res => res.json()); if (r.error) throw new Error(r.error); if (r.busy) setError(t.brief.busy); await load(); }
     catch (e) { setError(e.message); } finally { setRunning(false); }
   };
   const setStatus = async (taskId, status) => {
