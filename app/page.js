@@ -4,9 +4,13 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { storeApi, resetDemo } from "./store";
 import { useLang } from "./i18n";
 import { ownerName, policyText } from "../lib/policies";
+import { BANKS, getBank } from "../lib/banks";
+import { STAFF } from "../lib/staff";
 
 const ALERT_ICON = { new: "megaphone", risk: "alert", done: "check", error: "xcircle" };
 const NAV = [["dash", "dashboard"], ["analyze", "scan"], ["history", "history"], ["docs", "folder"], ["policies", "shield"]];
+const bankName = (b, lang) => (lang === "en" ? b.nameEn : b.name);
+const ALL_POLICIES = BANKS.flatMap(b => b.policies);
 const TOPIC_EN = { AML: "Suspicious transaction reporting", EKYC: "Digital customer identity verification", MULE: "Mule accounts and unusual transfers", CDD: "Customer risk review", ITRM: "Cloud services and IT risk", CASH: "Cash transaction reporting" };
 
 // ข้อความประกาศด้านล่างเป็นตัวอย่างเพื่อ demo ไม่ใช่ประกาศ ธปท. ฉบับจริง
@@ -87,13 +91,13 @@ export default function Home() {
   const [bellOpen, setBellOpen] = useState(false);
   const [ov, setOv] = useState(null);
   const [feed, setFeed] = useState([]);
-  const [policies, setPolicies] = useState([]);
   const [docs, setDocs] = useState([]);
   const [detail, setDetail] = useState(null);
   const [running, setRunning] = useState(false);
   const [watching, setWatching] = useState(false);
   const [busyTask, setBusyTask] = useState("");
   const [ai, setAi] = useState(null);
+  const [bankId, setBankId] = useState("demo");
   const lastUnread = useRef(0);
 
   const flash = (m) => { setToast(m); setTimeout(() => setToast(""), 4000); };
@@ -110,7 +114,7 @@ export default function Home() {
 
   useEffect(() => {
     safe(async () => {
-      await Promise.all([loadAlerts(), loadOverview(), loadFeed(), loadDocs(), get("/policies").then(r => setPolicies(r.policies || [])), get("/status").then(setAi)]);
+      await Promise.all([loadAlerts(), loadOverview(), loadFeed(), loadDocs(), get("/status").then(setAi)]);
     })();
     const timer = setInterval(async () => {
       try { const u = await loadAlerts(); if (u > lastUnread.current) { loadOverview(); loadFeed(); } lastUnread.current = u; } catch {}
@@ -118,6 +122,9 @@ export default function Home() {
     return () => clearInterval(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+  useEffect(() => { const b = localStorage.getItem("fg-bank"); if (b) setBankId(getBank(b).id); }, []);
+  const chooseBank = (id) => { setBankId(id); localStorage.setItem("fg-bank", id); setTab("dash"); };
+  const bank = getBank(bankId);
 
   const openReg = safe(async (regId, extra) => {
     setBellOpen(false); setTab("detail"); setDetail({ loading: true, regId });
@@ -128,7 +135,7 @@ export default function Home() {
   const runAnalyze = safe(async (form) => {
     setRunning(true);
     try {
-      const r = await post("/run", { ...form, lang });
+      const r = await post("/run", { ...form, lang, bankId });
       await Promise.all([loadAlerts(), loadOverview()]);
       await openReg(r.regId, { trace: r.trace, summary: r.summary });
     } finally { setRunning(false); }
@@ -165,6 +172,9 @@ export default function Home() {
         <div className="top-right">
           <span className="pill">{ai?.ai ? `AI · Groq · ${ai.model}` : t.rulesMode}</span>
           <button className="pill reset" onClick={() => { if (confirm(t.resetConfirm)) { resetDemo(); location.reload(); } }}>{t.reset}</button>
+          <select className="pill bank-select" value={bankId} onChange={e => chooseBank(e.target.value)} aria-label={t.bank}>
+            {BANKS.map(b => <option key={b.id} value={b.id}>{bankName(b, lang)}</option>)}
+          </select>
           <div className="lang" role="group" aria-label="Language">
             {["th", "en"].map(l => <button key={l} className={lang === l ? "on" : ""} onClick={() => setLang(l)}>{l.toUpperCase()}</button>)}
           </div>
@@ -196,19 +206,20 @@ export default function Home() {
 
       <nav className="nav">
         {NAV.map(([k, icon]) => (
-          <button key={k} className={tab === k || (tab === "detail" && k === "history") ? "on" : ""} onClick={() => setTab(k)}><Icon name={icon} size={17} />{t.nav[k]}</button>
+          <button key={k} className={tab === k || (tab === "detail" && k === "history") ? "on" : ""} onClick={() => setTab(k)}><Icon name={icon} size={17} />{k === "dash" && bank.real ? t.brief.nav : t.nav[k]}</button>
         ))}
       </nav>
 
       {error && <div className="alert">{error} <button className="link" onClick={() => setError("")}>{t.close}</button></div>}
       {toast && <div className="toast">{toast}</div>}
 
-      {tab === "dash" && <Dashboard ov={ov} feed={feed} watching={watching} onWatch={runWatcher} onOpen={openReg} onReview={review} busyTask={busyTask} />}
+      {tab === "dash" && bank.real && <Brief bank={bank} setError={setError} />}
+      {tab === "dash" && !bank.real && <Dashboard ov={ov} feed={feed} watching={watching} onWatch={runWatcher} onOpen={openReg} onReview={review} busyTask={busyTask} />}
       {tab === "analyze" && <Analyze docs={docs} running={running} onRun={runAnalyze} onUploaded={loadDocs} setError={setError} />}
       {tab === "history" && <History regs={ov?.regulations} onOpen={openReg} onRefresh={safe(loadOverview)} />}
       {tab === "docs" && <Docs docs={docs} onRefresh={safe(loadDocs)} setError={setError} onAnalyze={(d) => { setTab("analyze"); setTimeout(() => window.dispatchEvent(new CustomEvent("fg-doc", { detail: d })), 0); }} />}
-      {tab === "policies" && <Policies policies={policies} />}
-      {tab === "detail" && <Detail d={detail} onBack={() => setTab("history")} onReview={review} busyTask={busyTask} policies={policies} />}
+      {tab === "policies" && <Policies bank={bank} />}
+      {tab === "detail" && <Detail d={detail} onBack={() => setTab("history")} onReview={review} busyTask={busyTask} />}
     </div>
   );
 }
@@ -418,7 +429,7 @@ function Analyze({ docs, running, onRun, onUploaded, setError }) {
 }
 
 /* ================= ผลวิเคราะห์ ================= */
-function Detail({ d, onBack, onReview, busyTask, policies }) {
+function Detail({ d, onBack, onReview, busyTask }) {
   const { t, lang, date, time } = useLang();
   const [tab, setTab] = useState("gaps");
   useEffect(() => { setTab("gaps"); }, [d?.regId]);
@@ -434,7 +445,7 @@ function Detail({ d, onBack, onReview, busyTask, policies }) {
   const reg = d.regulation || {};
   const trace = d.trace || reg.trace || [];
   const summary = d.summary || reg.summary || (reg.counts && t.autoSummary(reg.counts));
-  const pName = (id) => { const p = policies.find(x => x.policyId === id); return p && policyText(p, lang).title; };
+  const pName = (id) => { const p = ALL_POLICIES.find(x => x.policyId === id); return p && policyText(p, lang).title; };
 
   return (
     <div className="stack">
@@ -646,18 +657,128 @@ function Docs({ docs, onRefresh, setError, onAnalyze }) {
 }
 
 /* ================= Policy ================= */
-function Policies({ policies }) {
+function Policies({ bank }) {
   const { t, lang } = useLang();
   return (
     <section className="card">
-      <h2 className="ht"><Icon name="shield" />{t.pol.title(policies.length)}</h2>
-      <p className="hint">{t.pol.hint}</p>
+      <h2 className="ht"><Icon name="shield" />{bank.real ? `${bankName(bank, lang)} (${bank.policies.length})` : t.pol.title(bank.policies.length)}</h2>
+      <p className="hint">{bank.real ? <>{t.brief.publicNote} · <a href={bank.source} target="_blank" rel="noreferrer">{t.brief.source}</a></> : t.pol.hint}</p>
       <div className="table-wrap">
         <table className="table static">
           <thead><tr>{t.pol.cols.map(c => <th key={c}>{c}</th>)}</tr></thead>
-          <tbody>{policies.map(p => policyText(p, lang)).map(p => <tr key={p.policyId}><td><b>{p.policyId}</b></td><td>{p.title}</td><td>{p.text}</td><td className="muted">{p.owner}</td></tr>)}</tbody>
+          <tbody>{bank.policies.map(p => policyText(p, lang)).map(p => <tr key={p.policyId}><td><b>{p.policyId}</b></td><td>{p.title}</td><td>{p.text}</td><td className="muted">{ownerName(p.owner, lang)}</td></tr>)}</tbody>
         </table>
       </div>
     </section>
+  );
+}
+
+/* ================= สรุปประจำวัน (ธนาคารจริง) ================= */
+function Brief({ bank, setError }) {
+  const { t, lang, date, time } = useLang();
+  const [data, setData] = useState(null);
+  const [running, setRunning] = useState(false);
+  const [busy, setBusy] = useState("");
+
+  const load = useCallback(async () => {
+    const r = await fetch(`/api/daily?bank=${bank.id}`).then(res => res.json());
+    if (r.error) throw new Error(r.error);
+    setData(r);
+  }, [bank.id]);
+  useEffect(() => { setData(null); load().catch(e => setError(e.message)); }, [load, setError]);
+
+  const runNow = async () => {
+    setRunning(true); setError("");
+    try { const r = await fetch("/api/daily", { method: "POST" }).then(res => res.json()); if (r.error) throw new Error(r.error); await load(); }
+    catch (e) { setError(e.message); } finally { setRunning(false); }
+  };
+  const setStatus = async (taskId, status) => {
+    setBusy(taskId);
+    try { await fetch("/api/tasks", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ taskId, status }) }); await load(); }
+    catch (e) { setError(e.message); } finally { setBusy(""); }
+  };
+
+  if (!data) return <div className="card empty">{t.loading}</div>;
+  const count = (st) => data.tasks.filter(x => x.status === st).length;
+  const titleOfNotice = (packId) => data.notices.find(n => n.packId === packId)?.title || packId;
+  const staff = (id) => { const s = STAFF.find(x => x.id === id); return s ? (lang === "en" ? s.nameEn : s.name) : id; };
+  const tasks = [...data.tasks].sort((a, b) => ["pending_review", "open", "done", "rejected"].indexOf(a.status) - ["pending_review", "open", "done", "rejected"].indexOf(b.status));
+
+  return (
+    <div className="stack">
+      <section className="card">
+        <div className="card-head">
+          <div><h2 className="ht"><Icon name="radar" />{t.brief.title}</h2><p className="hint">{t.brief.hint}</p></div>
+          <button className="btn primary sm" onClick={runNow} disabled={running}><Icon name={running ? "refresh" : "play"} size={16} className={running ? "spin" : ""} />{running ? t.brief.running : t.brief.run}</button>
+        </div>
+        <p className="muted small">{data.lastRun ? t.brief.lastRun(time(data.lastRun.at), data.lastRun) : t.brief.never}</p>
+        <p className="hint">{t.brief.publicNote} · <a href={bank.source} target="_blank" rel="noreferrer">{t.brief.source}</a></p>
+      </section>
+
+      <section className="stats four">
+        <div className="stat"><Icon name="file" className="si" /><b>{data.notices.length}</b><span>{t.brief.stats.notices}</span></div>
+        <div className="stat focus"><Icon name="clipboard" className="si" /><b>{count("pending_review")}</b><span>{t.brief.stats.pending}</span></div>
+        <div className="stat warn"><Icon name="users" className="si" /><b>{count("open")}</b><span>{t.brief.stats.open}</span></div>
+        <div className="stat ok"><Icon name="check" className="si" /><b>{count("done")}</b><span>{t.brief.stats.done}</span></div>
+      </section>
+
+      <section className="card">
+        <h2 className="ht"><Icon name="file" />{t.brief.notices}</h2>
+        {data.notices.length === 0 && <p className="muted">{t.brief.noNotices}</p>}
+        <div className="stack">
+          {data.notices.map(n => {
+            const r = n.result; const counts = {}; (r?.gaps || []).forEach(g => { counts[g.status] = (counts[g.status] || 0) + 1; });
+            return (
+              <details key={n.packId} className="card notice">
+                <summary>
+                  <b>{n.title}</b>
+                  <small className="muted">{date(n.date)} · <a href={n.pdfUrl} target="_blank" rel="noreferrer">{t.brief.pdf}</a></small>
+                  <span className="chips">
+                    {n.queued && <span className="status">{t.brief.queued}</span>}
+                    {r?.gaps && r.gaps.length === 0 && <span className="status covered">{t.brief.notApplicable}</span>}
+                    {Object.entries(counts).map(([st, c]) => <span key={st} className={`status ${st}`}>{t.status[st]} {c}</span>)}
+                  </span>
+                </summary>
+                {r?.error && <p className="reason">{r.error}</p>}
+                {r?.summary && <p>{r.summary}</p>}
+                {(r?.obligations || []).map((ob, i) => {
+                  const g = r.gaps[i];
+                  return (
+                    <div key={ob.obligationId} className={`ob-row ${g.status}`}>
+                      <span className="clause">{ob.sourceClause}</span>
+                      <div><p><b>{ob.who}</b> {t.det.must}{ob.what}</p><small className="muted">{t.status[g.status]}{g.policyId !== "-" ? ` · ${g.policyId}` : ""} · {g.reason}</small></div>
+                    </div>
+                  );
+                })}
+              </details>
+            );
+          })}
+        </div>
+      </section>
+
+      <section className="card">
+        <h2 className="ht"><Icon name="users" />{t.brief.tasks} ({tasks.length})</h2>
+        {tasks.length === 0 && <p className="muted">{t.brief.noTasks}</p>}
+        <div className="stack">
+          {tasks.map(x => (
+            <div key={x.taskId} className={`card task ${x.status}`}>
+              <div className="task-main">
+                <span className={`badge ${x.status}`}>{t.brief.status[x.status]}</span>
+                <h4>{x.action}</h4>
+                <p className="muted">{t.brief.assignee} <b>{staff(x.assignee)}</b> · {ownerName(x.owner, lang)} · {t.det.dueBy} {date(x.dueDate)}</p>
+                <p className="muted small">{t.brief.notice}: {titleOfNotice(x.packId)}</p>
+              </div>
+              <div className="task-actions">
+                {x.status === "pending_review" && <>
+                  <button className="btn approve sm" disabled={busy === x.taskId} onClick={() => setStatus(x.taskId, "open")}>{t.approve}</button>
+                  <button className="btn reject sm" disabled={busy === x.taskId} onClick={() => setStatus(x.taskId, "rejected")}>{t.reject}</button>
+                </>}
+                {x.status === "open" && <button className="btn approve sm" disabled={busy === x.taskId} onClick={() => setStatus(x.taskId, "done")}>{t.brief.markDone}</button>}
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+    </div>
   );
 }
