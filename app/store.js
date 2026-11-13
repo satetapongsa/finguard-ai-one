@@ -131,7 +131,7 @@ function seed() {
 }
 
 // ---------- router ----------
-export async function mockApi(path, options = {}) {
+export async function storeApi(path, options = {}) {
   const s = load();
   const method = (options.method || "GET").toUpperCase();
   const [p, qs] = path.split("?");

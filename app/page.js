@@ -1,7 +1,7 @@
 "use client";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { mockApi, resetDemo } from "./mock";
+import { storeApi, resetDemo } from "./store";
 
 const STATUS_TH = { covered: "ครอบคลุมแล้ว", partial: "ครอบคลุมบางส่วน", missing: "ยังไม่มีใน policy", conflict: "ขัดกับ policy" };
 const TASK_TH = { pending_review: "รอคนอนุมัติ", open: "เปิดงานแล้ว", approved: "อนุมัติแล้ว", rejected: "ไม่อนุมัติ" };
@@ -69,7 +69,7 @@ function Icon({ name, size = 18, className = "", stroke = 1.8 }) {
 }
 
 async function call(path, options = {}) {
-  return mockApi(path, options);
+  return storeApi(path, options);
 }
 const get = (p) => call(p, { method: "GET" });
 const post = (p, body) => call(p, { method: "POST", body: JSON.stringify(body || {}) });
