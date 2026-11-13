@@ -2,11 +2,11 @@
 import { BANK_POLICIES, searchPolicies as search } from "../lib/policies";
 
 const WATCH_FEED = [
-  { regId: "BOT-WATCH-001", stage: "draft", title: "(ร่าง) แนวปฏิบัติการป้องกันภัยทุจริตทางการเงินผ่านช่องทางดิจิทัล", publishedAt: "2026-10-10", effectiveDate: "2027-04-01",
+  { regId: "BOT-WATCH-001", stage: "draft", title: "(ร่าง) แนวปฏิบัติการป้องกันภัยทุจริตทางการเงินผ่านช่องทางดิจิทัล", titleEn: "(Draft) Guideline on preventing digital financial fraud", publishedAt: "2026-10-10", effectiveDate: "2027-04-01",
     text: "ร่างประกาศเพื่อรับฟังความคิดเห็น ข้อ 1 สถาบันการเงินต้องแจ้งเตือนลูกค้าผ่าน Mobile Banking ทุกครั้งที่มีการเปลี่ยนอุปกรณ์ที่ใช้ทำธุรกรรม ข้อ 2 สถาบันการเงินต้องระงับบัญชีที่ต้องสงสัยว่าเป็นบัญชีม้าได้ไม่เกิน 30 วัน และแจ้งเจ้าของบัญชีภายใน 24 ชั่วโมง ข้อ 3 สถาบันการเงินต้องรายงานสถิติบัญชีที่ถูกระงับต่อธนาคารแห่งประเทศไทยทุกเดือน" },
-  { regId: "BOT-WATCH-002", stage: "final", title: "ประกาศการรายงานเหตุการณ์ภัยไซเบอร์ของสถาบันการเงิน", publishedAt: "2026-10-14", effectiveDate: "2027-01-01",
+  { regId: "BOT-WATCH-002", stage: "final", title: "ประกาศการรายงานเหตุการณ์ภัยไซเบอร์ของสถาบันการเงิน", titleEn: "Cyber incident reporting for financial institutions", publishedAt: "2026-10-14", effectiveDate: "2027-01-01",
     text: "ข้อ 1 สถาบันการเงินต้องรายงานเหตุการณ์ภัยไซเบอร์ที่มีผลกระทบร้ายแรงต่อธนาคารแห่งประเทศไทยภายใน 24 ชั่วโมงนับแต่ตรวจพบ ข้อ 2 ต้องส่งรายงานสรุปสาเหตุและแนวทางแก้ไขภายใน 7 วัน ข้อ 3 ต้องทดสอบแผนรองรับการดำเนินธุรกิจอย่างต่อเนื่องด้าน IT อย่างน้อยปีละ 1 ครั้ง" },
-  { regId: "BOT-WATCH-003", stage: "amendment", title: "ประกาศแก้ไขหลักเกณฑ์การเก็บรักษาข้อมูลธุรกรรม", publishedAt: "2026-10-16", effectiveDate: "2027-07-01",
+  { regId: "BOT-WATCH-003", stage: "amendment", title: "ประกาศแก้ไขหลักเกณฑ์การเก็บรักษาข้อมูลธุรกรรม", titleEn: "Amendment to transaction data retention rules", publishedAt: "2026-10-16", effectiveDate: "2027-07-01",
     text: "แก้ไขเพิ่มเติม ข้อ 1 ให้สถาบันการเงินเก็บรักษาข้อมูลการทำธุรกรรมไว้ไม่น้อยกว่า 10 ปีนับแต่วันที่ยุติความสัมพันธ์กับลูกค้า ข้อ 2 ข้อมูลที่เก็บต้องเรียกดูได้ภายใน 3 วันทำการเมื่อธนาคารแห่งประเทศไทยร้องขอ" }
 ];
 
@@ -82,13 +82,14 @@ function analyzeByRules(text, stage) {
   return { obligations, gaps, tasks, trace, turns: clauses.length, summary: "" };
 }
 
-function addAlert(type, title, message, regId) {
+// เก็บเฉพาะข้อมูลดิบ หน้าเว็บแปลงเป็นข้อความตามภาษาที่เลือก
+function addAlert(type, regId, data) {
   const s = load();
-  s.alerts.unshift({ alertId: `${now()}#${Math.random().toString(36).slice(2, 8)}`, type, title, message, regId, read: false, createdAt: now() });
+  s.alerts.unshift({ alertId: `${now()}#${Math.random().toString(36).slice(2, 8)}`, type, regId, data, read: false, createdAt: now() });
 }
 
 // เก็บผลวิเคราะห์ (จาก AI หรือจากกฎ) ลง localStorage
-function saveResult({ regId, title, effectiveDate, docKey, source, stage }, r, engine, at) {
+function saveResult({ regId, title, titleEn, effectiveDate, docKey, source, stage }, r, engine, at) {
   const s = load();
   const ts = at || now();
   effectiveDate = effectiveDate || "2026-12-01";
@@ -98,10 +99,9 @@ function saveResult({ regId, title, effectiveDate, docKey, source, stage }, r, e
 
   const counts = { obligations: r.obligations.length, covered: 0, partial: 0, missing: 0, conflict: 0, tasks: r.tasks.length, pending: r.tasks.filter(t => t.needsHumanReview).length };
   r.gaps.forEach(g => { counts[g.status]++; });
-  const risky = counts.missing + counts.conflict;
-  const summary = r.summary || `พบภาระหน้าที่ ${counts.obligations} ข้อ ครอบคลุมแล้ว ${counts.covered} ข้อ บางส่วน ${counts.partial} ข้อ ขาดหรือขัดกับ policy ${risky} ข้อ สร้างงาน ${counts.tasks} งาน โดย ${counts.pending} งานรอคนอนุมัติ`;
-  s.regs[regId] = { regId, title: title || regId, effectiveDate, source: source || "manual", stage: stage || "final", docKey, engine, status: "done", summary, counts, trace: r.trace, turns: r.turns, createdAt: ts, finishedAt: ts };
-  addAlert(risky ? "risk" : "done", `วิเคราะห์เสร็จ: ${title || regId}`, `พบ ${counts.obligations} ภาระหน้าที่ · ขาด/ขัดแย้ง ${risky} · รออนุมัติ ${counts.pending} งาน`, regId);
+  const summary = r.summary || "";
+  s.regs[regId] = { regId, title: title || regId, titleEn, effectiveDate, source: source || "manual", stage: stage || "final", docKey, engine, status: "done", summary, counts, trace: r.trace, turns: r.turns, createdAt: ts, finishedAt: ts };
+  addAlert(counts.missing + counts.conflict ? "risk" : "done", regId, { title: title || regId, titleEn, counts });
   return { regId, summary, turns: r.turns, trace: r.trace, counts };
 }
 
@@ -112,7 +112,7 @@ async function analyze(form) {
   const text = String(form.regText || "").trim() || s.docs.find(d => d.key === form.docKey)?.text || "";
   if (!text.trim()) throw Object.assign(new Error("ใส่เนื้อหาประกาศ หรือเลือกเอกสารที่อ่านข้อความได้"), { status: 400 });
 
-  const res = await fetch("/api/analyze", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ title: reg.title, stage: reg.stage, regText: text }) });
+  const res = await fetch("/api/analyze", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ title: reg.title, stage: reg.stage, regText: text, lang: form.lang }) });
   if (res.status === 503) return saveResult(reg, analyzeByRules(text, reg.stage), "rules");
   const data = await res.json();
   if (!res.ok) throw new Error(data.error || "วิเคราะห์ไม่สำเร็จ");
@@ -122,9 +122,9 @@ async function analyze(form) {
 function seed() {
   const back = (h) => new Date(Date.now() - h * 3600000).toISOString();
   const f = WATCH_FEED[0];
-  addAlert("new", `พบร่างประกาศ (รับฟังความเห็น): ${f.title}`, `เผยแพร่ ${f.publishedAt} · มีผล ${f.effectiveDate} · Agent เริ่มวิเคราะห์อัตโนมัติ`, f.regId);
+  addAlert("new", f.regId, f);
   saveResult({ ...f, source: "watcher" }, analyzeByRules(f.text, f.stage), "rules", back(20));
-  saveResult({ regId: "BOT-AML-DEMO", title: "รายงานธุรกรรมที่มีเหตุอันควรสงสัย", effectiveDate: "2027-01-01", source: "manual" },
+  saveResult({ regId: "BOT-AML-DEMO", title: "รายงานธุรกรรมที่มีเหตุอันควรสงสัย", titleEn: "Suspicious transaction reporting", effectiveDate: "2027-01-01", source: "manual" },
     analyzeByRules("ข้อ 1 ให้สถาบันการเงินรายงานธุรกรรมที่มีเหตุอันควรสงสัยต่อธนาคารแห่งประเทศไทยภายใน 3 วันทำการนับแต่วันที่ตรวจพบ ข้อ 2 ให้สถาบันการเงินเก็บรักษาข้อมูลการทำธุรกรรมไว้ไม่น้อยกว่า 10 ปี ข้อ 3 ให้สถาบันการเงินแต่งตั้งเจ้าหน้าที่กำกับดูแลด้านการปฏิบัติตามกฎเกณฑ์ภายใน 90 วันนับแต่วันที่ประกาศมีผลบังคับใช้"), "rules", back(3));
   mem.docs.push({ key: `docs/regulation/${Date.now()}-sample.txt`, name: "ประกาศตัวอย่าง.txt", kind: "regulation", size: SAMPLE_DOC_TEXT.length * 3, lastModified: back(5), contentType: "text/plain", text: SAMPLE_DOC_TEXT, dataBase64: toB64(SAMPLE_DOC_TEXT) });
   mem.alerts.forEach((a, i) => { if (i > 0) a.read = true; });
@@ -174,10 +174,9 @@ export async function storeApi(path, options = {}) {
       return out({ feed: WATCH_FEED.map(({ text, ...f }) => ({ ...f, analyzed: !!s.regs[f.regId] })) });
     case "POST /watch/run": {
       const next = WATCH_FEED.find(f => !s.regs[f.regId]);
-      if (!next) return out({ found: 0, message: "ไม่พบประกาศใหม่ ทุกฉบับในแหล่งที่ติดตามวิเคราะห์แล้ว (กดรีเซ็ตข้อมูลจำลองเพื่อเริ่มใหม่)" });
-      const stageTh = { draft: "ร่างประกาศ (รับฟังความเห็น)", final: "ประกาศใหม่", amendment: "ประกาศแก้ไข" }[next.stage];
-      addAlert("new", `พบ${stageTh}: ${next.title}`, `เผยแพร่ ${next.publishedAt} · มีผล ${next.effectiveDate} · Agent เริ่มวิเคราะห์อัตโนมัติ`, next.regId);
-      return out({ found: 1, ...(await analyze({ ...next, regText: next.text, source: "watcher" })) });
+      if (!next) return out({ found: 0 });
+      addAlert("new", next.regId, next);
+      return out({ found: 1, ...(await analyze({ ...next, regText: next.text, source: "watcher", lang: body.lang })) });
     }
     case "GET /documents":
       return out({ documents: s.docs.map(({ dataBase64, text, ...d }) => d).sort((a, b) => String(b.lastModified).localeCompare(String(a.lastModified))) });
