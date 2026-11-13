@@ -1,3 +1,4 @@
+import { BANKS } from "../../../lib/banks";
 import { bankBrief, runDaily } from "../../../lib/daily";
 
 export const dynamic = "force-dynamic";
@@ -7,7 +8,9 @@ const fail = (e) => Response.json({ error: e.message }, { status: e.status || 50
 
 // สรุปประจำวันของธนาคารที่เลือก
 export async function GET(req) {
-  try { return Response.json(await bankBrief(new URL(req.url).searchParams.get("bank"))); } catch (e) { return fail(e); }
+  const bank = BANKS.find(b => b.real && b.id === new URL(req.url).searchParams.get("bank"));
+  if (!bank) return Response.json({ error: "ไม่พบธนาคาร" }, { status: 404 });
+  try { return Response.json(await bankBrief(bank.id)); } catch (e) { return fail(e); }
 }
 
 // ปุ่ม "รันตอนนี้" ในหน้าเว็บ
