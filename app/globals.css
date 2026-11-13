@@ -236,3 +236,6 @@ dt { color: var(--muted); } dd { margin: 0; }
 .pill.reset { background: transparent; color: #fff; cursor: pointer; }
 .pill.reset:hover { background: rgba(255,255,255,.12); }
 .demo-banner { margin: -6px 0 14px; padding: 10px 14px; border-radius: 10px; background: var(--warn-soft); color: var(--warn); font-size: 14px; border: 1px solid #f3d9ac; }
+.lang { display: inline-flex; border: 1px solid rgba(255,255,255,.35); border-radius: 999px; overflow: hidden; }
+.lang button { background: transparent; color: #fff; border: 0; font: inherit; font-size: 12px; padding: 5px 10px; cursor: pointer; }
+.lang button.on { background: #fff; color: #10213f; font-weight: 600; }
