@@ -167,7 +167,7 @@ export default function Home() {
           <div><h1>FinGuard AI</h1><p>Regulatory Compliance Agent · ประกาศ ธปท. → ภาระหน้าที่ → gap → งาน</p></div>
         </div>
         <div className="top-right">
-          <span className="pill">โหมดจำลอง · ไม่เชื่อมต่อ AWS</span>
+          <span className="pill">โหมดจำลอง</span>
           <button className="pill reset" onClick={() => { if (confirm("ล้างข้อมูลจำลองทั้งหมดแล้วเริ่มใหม่?")) { resetDemo(); location.reload(); } }}>รีเซ็ตข้อมูล</button>
           <div className="bell-wrap">
             <button className="bell" onClick={() => setBellOpen(o => !o)} aria-label="การแจ้งเตือน">

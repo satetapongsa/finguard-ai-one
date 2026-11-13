@@ -1,4 +1,4 @@
-// โหมดจำลอง: ทำงานในเบราว์เซอร์ทั้งหมด ไม่เรียก API / AWS ใด ๆ
+// API ฝั่งเบราว์เซอร์: ข้อมูลทั้งหมดเก็บใน localStorage ของผู้ใช้
 // ข้อมูลเก็บใน localStorage ของเบราว์เซอร์คนที่ใช้งานเท่านั้น
 
 const BANK_POLICIES = [
@@ -153,7 +153,7 @@ function seed() {
   mem.alerts.forEach((a, i) => { if (i > 0) a.read = true; });
 }
 
-// ---------- router (รูปแบบเดียวกับ Lambda จริง) ----------
+// ---------- router ----------
 export async function mockApi(path, options = {}) {
   const s = load();
   const method = (options.method || "GET").toUpperCase();
