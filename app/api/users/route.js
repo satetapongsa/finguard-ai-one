@@ -8,13 +8,14 @@ const handle = (fn) => fn().catch(e => Response.json({ error: e.message }, { sta
 export const GET = () => handle(async () => {
   const me = await currentUser().catch(() => null);
   const users = await listUsers();
-  return Response.json(me?.role === "manager" ? users : users.filter(u => u.active));
+  // หน้าเข้าสู่ระบบไม่แสดงบัญชีเจ้าของ (เข้าด้วยอีเมล) และไม่ส่งอีเมลออกไป
+  return Response.json(me?.role === "manager" ? users : users.filter(u => u.active && !u.owner).map(({ email, ...u }) => u));
 });
 
 // หัวหน้าเพิ่มผู้ใช้
 export const POST = (req) => handle(async () => {
-  await requireUser("manager");
-  return Response.json(await createUser(await req.json().catch(() => ({}))), { status: 201 });
+  const me = await requireUser("manager");
+  return Response.json(await createUser(me, await req.json().catch(() => ({}))), { status: 201 });
 });
 
 // หัวหน้ารีเซ็ตรหัส / ปิด-เปิดบัญชี

@@ -1,7 +1,7 @@
 import { currentUser, login, SESSION_COOKIE } from "../../../lib/auth";
 
 export const dynamic = "force-dynamic";
-const pub = (u) => u && { id: u.id, name: u.name, nameEn: u.nameEn, role: u.role, dept: u.dept };
+const pub = (u) => u && { id: u.id, name: u.name, nameEn: u.nameEn, role: u.role, dept: u.dept, owner: !!u.owner };
 
 // ผู้ใช้ที่ล็อกอินอยู่
 export async function GET() {
