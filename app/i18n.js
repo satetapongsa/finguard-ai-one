@@ -66,9 +66,11 @@ const TEXT = {
     },
     bank: "ธนาคาร",
     auth: {
-      title: "เข้าสู่ระบบ FinGuard AI", hint: "เลือกชื่อของคุณแล้วใส่รหัสผ่านของบทบาท (หัวหน้า / พนักงาน)",
+      title: "เข้าสู่ระบบ FinGuard AI", hint: "เลือกชื่อของคุณแล้วใส่รหัสผ่าน (ครั้งแรกใช้รหัสของบทบาท หัวหน้า / พนักงาน แล้วเปลี่ยนเป็นรหัสของตัวเองได้)",
       user: "ผู้ใช้", password: "รหัสผ่าน", submit: "เข้าสู่ระบบ", logout: "ออกจากระบบ",
-      role: { manager: "หัวหน้า", staff: "พนักงาน" }
+      role: { manager: "หัวหน้า", staff: "พนักงาน" },
+      change: "เปลี่ยนรหัสผ่าน", current: "รหัสผ่านปัจจุบัน", next: "รหัสผ่านใหม่ (อย่างน้อย 8 ตัว)", confirm: "ยืนยันรหัสผ่านใหม่",
+      mismatch: "รหัสผ่านใหม่ทั้งสองช่องไม่ตรงกัน", changed: "เปลี่ยนรหัสผ่านแล้ว ครั้งหน้าใช้รหัสใหม่", cancel: "ยกเลิก"
     },
     brief: {
       nav: "สรุปประจำวัน", title: "สรุปประจำวัน · ประกาศ ธปท. ล่าสุด",
@@ -153,9 +155,11 @@ const TEXT = {
     },
     bank: "Bank",
     auth: {
-      title: "Sign in to FinGuard AI", hint: "Choose your name and enter your role's password (manager / staff)",
+      title: "Sign in to FinGuard AI", hint: "Choose your name and enter your password (first time: your role's password, manager / staff, then change it to your own)",
       user: "User", password: "Password", submit: "Sign in", logout: "Sign out",
-      role: { manager: "Manager", staff: "Staff" }
+      role: { manager: "Manager", staff: "Staff" },
+      change: "Change password", current: "Current password", next: "New password (min. 8 characters)", confirm: "Confirm new password",
+      mismatch: "The new passwords do not match", changed: "Password changed. Use the new one next time.", cancel: "Cancel"
     },
     brief: {
       nav: "Daily brief", title: "Daily brief · latest BOT notices",

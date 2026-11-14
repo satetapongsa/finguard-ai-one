@@ -127,6 +127,7 @@ export default function Home() {
   useEffect(() => { const b = localStorage.getItem("fg-bank"); if (b) setBankId(getBank(b).id); }, []);
   useEffect(() => { fetch("/api/auth").then(r => (r.ok ? r.json() : null)).then(setMe).catch(() => setMe(null)); }, []);
   const logout = async () => { await fetch("/api/auth", { method: "DELETE" }); setMe(null); };
+  const [pwOpen, setPwOpen] = useState(false);
   const chooseBank = (id) => { setBankId(id); localStorage.setItem("fg-bank", id); setTab("dash"); };
   const bank = getBank(bankId);
 
@@ -171,6 +172,7 @@ export default function Home() {
 
   return (
     <div className="app">
+      {pwOpen && <ChangePassword onClose={() => setPwOpen(false)} onDone={() => { setPwOpen(false); flash(t.auth.changed); }} />}
       <header className="topbar">
         <div className="brand">
           <span className="logo"><Icon name="shield" size={22} stroke={2} /></span>
@@ -185,6 +187,7 @@ export default function Home() {
           <div className="lang" role="group" aria-label="Language">
             {["th", "en"].map(l => <button key={l} className={lang === l ? "on" : ""} onClick={() => setLang(l)}>{l.toUpperCase()}</button>)}
           </div>
+          <button className="pill reset" onClick={() => setPwOpen(true)}>{t.auth.change}</button>
           <button className="pill reset" onClick={logout} title={t.auth.logout}>{lang === "en" ? me.nameEn : me.name} · {t.auth.role[me.role]} · {t.auth.logout}</button>
           <div className="bell-wrap">
             <button className="bell" onClick={() => setBellOpen(o => !o)} aria-label={t.alerts}>
@@ -842,6 +845,42 @@ function Login({ onDone }) {
         <label className="field"><span>{t.auth.password}</span><input type="password" value={password} onChange={e => setPassword(e.target.value)} autoComplete="current-password" required /></label>
         {error && <p className="alert">{error}</p>}
         <button className="btn primary" disabled={busy}>{t.auth.submit}</button>
+      </form>
+    </div>
+  );
+}
+
+/* ================= เปลี่ยนรหัสผ่าน ================= */
+function ChangePassword({ onClose, onDone }) {
+  const { t } = useLang();
+  const [f, setF] = useState({ current: "", next: "", confirm: "" });
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+  const set = (k) => (e) => setF({ ...f, [k]: e.target.value });
+
+  const submit = async (e) => {
+    e.preventDefault(); setError("");
+    if (f.next !== f.confirm) return setError(t.auth.mismatch);
+    setBusy(true);
+    try {
+      const r = await fetch("/api/auth/password", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ current: f.current, next: f.next }) });
+      if (!r.ok) throw new Error((await r.json()).error);
+      onDone();
+    } catch (err) { setError(err.message); } finally { setBusy(false); }
+  };
+
+  return (
+    <div className="login overlay" onClick={e => e.target === e.currentTarget && onClose()}>
+      <form className="card" onSubmit={submit}>
+        <h2>{t.auth.change}</h2>
+        <label className="field"><span>{t.auth.current}</span><input type="password" value={f.current} onChange={set("current")} autoComplete="current-password" required /></label>
+        <label className="field"><span>{t.auth.next}</span><input type="password" value={f.next} onChange={set("next")} autoComplete="new-password" minLength={8} required /></label>
+        <label className="field"><span>{t.auth.confirm}</span><input type="password" value={f.confirm} onChange={set("confirm")} autoComplete="new-password" minLength={8} required /></label>
+        {error && <p className="alert">{error}</p>}
+        <div className="row-btns">
+          <button type="button" className="btn" onClick={onClose}>{t.auth.cancel}</button>
+          <button className="btn primary" disabled={busy}>{t.auth.change}</button>
+        </div>
       </form>
     </div>
   );
