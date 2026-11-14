@@ -13,7 +13,7 @@ export async function GET() {
 export async function POST(req) {
   try {
     const { userId, password } = await req.json().catch(() => ({}));
-    const s = login(userId, password);
+    const s = await login(userId, password);
     const res = Response.json(pub(s.user));
     res.headers.set("Set-Cookie", `${s.cookie}=${s.token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${s.maxAge}${process.env.NODE_ENV === "production" ? "; Secure" : ""}`);
     return res;
