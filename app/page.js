@@ -203,7 +203,7 @@ export default function Home() {
             {["th", "en"].map(l => <button key={l} className={lang === l ? "on" : ""} onClick={() => setLang(l)}>{l.toUpperCase()}</button>)}
           </div>
           <button className="pill reset" onClick={() => setPwOpen(true)}>{t.auth.change}</button>
-          <button className="pill reset" onClick={logout} title={t.auth.logout}>{lang === "en" ? me.nameEn : me.name} · {t.auth.role[me.role]} · {t.auth.logout}</button>
+          <button className="pill reset" onClick={logout} title={t.auth.logout}>{me.owner ? t.auth.owner : `${lang === "en" ? me.nameEn : me.name} · ${t.auth.role[me.role]}`} · {t.auth.logout}</button>
           <div className="bell-wrap">
             <button className="bell" onClick={() => setBellOpen(o => !o)} aria-label={t.alerts}>
               <Icon name="bell" size={20} />{unread > 0 && <em>{unread}</em>}
@@ -869,7 +869,8 @@ function Login({ onDone }) {
   const [error, setError] = useState("");
   const users = useUsers(setError);
   const [picked, setUserId] = useState("");
-  const userId = picked || users[0]?.id || "";
+  const [email, setEmail] = useState(null); // null = เลือกชื่อ, string = เจ้าของระบบเข้าด้วยอีเมล
+  const userId = email ?? (picked || users[0]?.id || "");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -893,14 +894,17 @@ function Login({ onDone }) {
         </div>
         <h2>{t.auth.title}</h2>
         <p className="hint">{t.auth.hint}</p>
-        <label className="field"><span>{t.auth.user}</span>
+        {email !== null ? (
+          <label className="field"><span>{t.auth.email}</span><input type="email" value={email} onChange={e => setEmail(e.target.value)} autoComplete="username" required /></label>
+        ) : <label className="field"><span>{t.auth.user}</span>
           <select value={userId} onChange={e => setUserId(e.target.value)}>
             {users.map(u => <option key={u.id} value={u.id}>{lang === "en" ? u.nameEn : u.name} · {t.auth.role[u.role]}</option>)}
           </select>
-        </label>
+        </label>}
         <label className="field"><span>{t.auth.password}</span><input type="password" value={password} onChange={e => setPassword(e.target.value)} autoComplete="current-password" required /></label>
         {error && <p className="alert">{error}</p>}
         <button className="btn primary" disabled={busy || !userId}>{t.auth.submit}</button>
+        <button type="button" className="link" onClick={() => setEmail(email === null ? "" : null)}>{email === null ? t.auth.useEmail : t.auth.usePick}</button>
       </form>
     </div>
   );
@@ -908,6 +912,8 @@ function Login({ onDone }) {
 
 /* ================= จัดการผู้ใช้ (หัวหน้า) ================= */
 const BLANK_USER = { name: "", nameEn: "", role: "staff", dept: DEPTS[0], password: "" };
+// หัวหน้าจัดการได้เฉพาะพนักงาน เจ้าของระบบจัดการได้ทุกคน (ต้องตรงกับ lib/users.js)
+const canManage = (me, u) => me.owner || (u.role === "staff" && !u.owner);
 
 function UsersAdmin({ me, setError, flash }) {
   const { t, lang } = useLang();
@@ -948,12 +954,12 @@ function UsersAdmin({ me, setError, flash }) {
             <tbody>
               {users.map(u => (
                 <tr key={u.id} className={u.active ? "" : "muted"}>
-                  <td><b>{lang === "en" ? u.nameEn : u.name}</b><small className="muted">{u.id}</small></td>
-                  <td>{t.auth.role[u.role]}</td>
+                  <td><b>{lang === "en" ? u.nameEn : u.name}</b><small className="muted">{u.email || u.id}</small></td>
+                  <td>{u.owner ? t.auth.owner : t.auth.role[u.role]}</td>
                   <td>{ownerName(u.dept, lang)}</td>
                   <td><span className={`status ${u.active ? "covered" : "missing"}`}>{u.active ? t.users.active : t.users.inactive}</span></td>
                   <td>
-                    {resetId === u.id ? (
+                    {!canManage(me, u) ? <span className="muted small">{t.users.noAccess}</span> : resetId === u.id ? (
                       <form className="row-inline" onSubmit={e => reset(e, u)}>
                         <input className="search" type="password" placeholder={t.users.newPw} value={newPw} onChange={e => setNewPw(e.target.value)} minLength={8} required autoComplete="new-password" />
                         <button className="btn sm primary" disabled={busy}>{t.brief.save}</button>
@@ -979,7 +985,7 @@ function UsersAdmin({ me, setError, flash }) {
           <label className="field"><span>{t.users.name}</span><input value={form.name} onChange={set("name")} required maxLength={80} /></label>
           <label className="field"><span>{t.users.nameEn}</span><input value={form.nameEn} onChange={set("nameEn")} maxLength={80} /></label>
           <label className="field"><span>{t.users.cols[1]}</span>
-            <select value={form.role} onChange={set("role")}>{["staff", "manager"].map(r => <option key={r} value={r}>{t.auth.role[r]}</option>)}</select>
+            <select value={form.role} onChange={set("role")}>{(me.owner ? ["staff", "manager"] : ["staff"]).map(r => <option key={r} value={r}>{t.auth.role[r]}</option>)}</select>
           </label>
           <label className="field"><span>{t.users.cols[2]}</span>
             <select value={form.dept} onChange={set("dept")}>{DEPTS.map(d => <option key={d} value={d}>{ownerName(d, lang)}</option>)}</select>

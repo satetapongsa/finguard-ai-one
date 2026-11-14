@@ -13,7 +13,7 @@ const TEXT = {
     nav: { dash: "ภาพรวม", analyze: "วิเคราะห์ประกาศ", history: "ประวัติ", docs: "คลังเอกสาร", policies: "Policy ธนาคาร", users: "ผู้ใช้" },
     users: {
       title: "ผู้ใช้ทั้งหมด", hint: "เพิ่มพนักงาน รีเซ็ตรหัสให้คนที่ลืม หรือปิดบัญชีคนที่ลาออก (งานเดิมยังอยู่ แต่จะไม่ได้รับงานใหม่) · ใส่รหัสผิด 5 ครั้งติด บัญชีจะล็อก 15 นาที รีเซ็ตรหัสเพื่อปลดล็อกได้",
-      cols: ["ชื่อ", "บทบาท", "ฝ่าย", "สถานะ", "จัดการ"], active: "ใช้งาน", inactive: "ปิดบัญชี",
+      cols: ["ชื่อ", "บทบาท", "ฝ่าย", "สถานะ", "จัดการ"], active: "ใช้งาน", inactive: "ปิดบัญชี", noAccess: "เฉพาะเจ้าของระบบ",
       reset: "รีเซ็ตรหัส", newPw: "รหัสใหม่ (8 ตัวขึ้นไป)", disable: "ปิดบัญชี", enable: "เปิดบัญชี",
       add: "เพิ่มผู้ใช้", name: "ชื่อ (ไทย)", nameEn: "ชื่อ (อังกฤษ)", firstPw: "รหัสผ่านเริ่มต้น (8 ตัวขึ้นไป)",
       added: (n) => `เพิ่ม ${n} แล้ว`, resetDone: (n) => `รีเซ็ตรหัสของ ${n} แล้ว`, disabled: (n) => `ปิดบัญชี ${n} แล้ว`, enabled: (n) => `เปิดบัญชี ${n} แล้ว`
@@ -75,7 +75,8 @@ const TEXT = {
     auth: {
       title: "เข้าสู่ระบบ FinGuard AI", hint: "เลือกชื่อของคุณแล้วใส่รหัสผ่าน (ครั้งแรกใช้รหัสของบทบาท หัวหน้า / พนักงาน แล้วเปลี่ยนเป็นรหัสของตัวเองได้)",
       user: "ผู้ใช้", password: "รหัสผ่าน", submit: "เข้าสู่ระบบ", logout: "ออกจากระบบ",
-      role: { manager: "หัวหน้า", staff: "พนักงาน" },
+      role: { manager: "หัวหน้า", staff: "พนักงาน" }, owner: "เจ้าของระบบ",
+      email: "อีเมลเจ้าของระบบ", useEmail: "เจ้าของระบบ? เข้าด้วยอีเมล", usePick: "เลือกชื่อผู้ใช้แทน",
       change: "เปลี่ยนรหัสผ่าน", current: "รหัสผ่านปัจจุบัน", next: "รหัสผ่านใหม่ (อย่างน้อย 8 ตัว)", confirm: "ยืนยันรหัสผ่านใหม่",
       mismatch: "รหัสผ่านใหม่ทั้งสองช่องไม่ตรงกัน", changed: "เปลี่ยนรหัสผ่านแล้ว ครั้งหน้าใช้รหัสใหม่", cancel: "ยกเลิก"
     },
@@ -111,7 +112,7 @@ const TEXT = {
     nav: { dash: "Overview", analyze: "Analyze", history: "History", docs: "Documents", policies: "Bank policies", users: "Users" },
     users: {
       title: "All users", hint: "Add staff, reset a forgotten password, or disable someone who left (their tasks stay, but they get no new ones) · 5 wrong passwords in a row lock the account for 15 minutes; resetting the password unlocks it",
-      cols: ["Name", "Role", "Department", "Status", "Actions"], active: "Active", inactive: "Disabled",
+      cols: ["Name", "Role", "Department", "Status", "Actions"], active: "Active", inactive: "Disabled", noAccess: "Owner only",
       reset: "Reset password", newPw: "New password (8+ characters)", disable: "Disable", enable: "Enable",
       add: "Add user", name: "Name (Thai)", nameEn: "Name (English)", firstPw: "Initial password (8+ characters)",
       added: (n) => `Added ${n}`, resetDone: (n) => `Password reset for ${n}`, disabled: (n) => `Disabled ${n}`, enabled: (n) => `Enabled ${n}`
@@ -173,7 +174,8 @@ const TEXT = {
     auth: {
       title: "Sign in to FinGuard AI", hint: "Choose your name and enter your password (first time: your role's password, manager / staff, then change it to your own)",
       user: "User", password: "Password", submit: "Sign in", logout: "Sign out",
-      role: { manager: "Manager", staff: "Staff" },
+      role: { manager: "Manager", staff: "Staff" }, owner: "Owner",
+      email: "Owner email", useEmail: "Owner? Sign in with email", usePick: "Pick a user instead",
       change: "Change password", current: "Current password", next: "New password (min. 8 characters)", confirm: "Confirm new password",
       mismatch: "The new passwords do not match", changed: "Password changed. Use the new one next time.", cancel: "Cancel"
     },
