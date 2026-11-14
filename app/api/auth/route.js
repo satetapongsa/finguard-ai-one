@@ -5,7 +5,7 @@ const pub = (u) => u && { id: u.id, name: u.name, nameEn: u.nameEn, role: u.role
 
 // ผู้ใช้ที่ล็อกอินอยู่
 export async function GET() {
-  const user = await currentUser();
+  const user = await currentUser().catch(() => null);
   return user ? Response.json(pub(user)) : Response.json({ error: "กรุณาเข้าสู่ระบบ" }, { status: 401 });
 }
 
