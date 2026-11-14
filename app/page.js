@@ -5,7 +5,6 @@ import { storeApi, resetDemo } from "./store";
 import { useLang } from "./i18n";
 import { ownerName, policyText } from "../lib/policies";
 import { BANKS, getBank } from "../lib/banks";
-import { USERS } from "../lib/staff";
 
 const ALERT_ICON = { new: "megaphone", risk: "alert", done: "check", error: "xcircle" };
 const NAV = [["dash", "dashboard"], ["analyze", "scan"], ["history", "history"], ["docs", "folder"], ["policies", "shield"]];
@@ -56,8 +55,22 @@ const ICONS = {
   sparkle: "M12 3l1.9 5.8L20 11l-6.1 2.2L12 19l-1.9-5.8L4 11l6.1-2.2zM19 3v4M21 5h-4",
   search: "M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16zM21 21l-4.3-4.3",
   play: "M5 3l14 9-14 9z",
-  layers: "M12 2 2 7l10 5 10-5zM2 17l10 5 10-5M2 12l10 5 10-5"
+  layers: "M12 2 2 7l10 5 10-5zM2 17l10 5 10-5M2 12l10 5 10-5",
+  mail: "M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2zM22 6l-10 7L2 6"
 };
+
+// รายชื่อผู้ใช้จากฐานข้อมูล (โหลดครั้งเดียวต่อหน้า)
+let usersRequest;
+const fetchUsers = () => (usersRequest ||= fetch("/api/users").then(async r => {
+  const data = await r.json();
+  if (!r.ok) { usersRequest = null; throw new Error(data.error); }
+  return data;
+}));
+function useUsers(onError) {
+  const [users, setUsers] = useState([]);
+  useEffect(() => { fetchUsers().then(setUsers).catch(e => onError?.(e.message)); }, [onError]);
+  return users;
+}
 function Icon({ name, size = 18, className = "", stroke = 1.8 }) {
   return (
     <svg className={`ic ${className}`} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -224,7 +237,7 @@ export default function Home() {
       {error && <div className="alert">{error} <button className="link" onClick={() => setError("")}>{t.close}</button></div>}
       {toast && <div className="toast">{toast}</div>}
 
-      {tab === "dash" && bank.real && <Brief bank={bank} me={me} setError={setError} />}
+      {tab === "dash" && bank.real && <Brief bank={bank} me={me} setError={setError} flash={flash} />}
       {tab === "dash" && !bank.real && <Dashboard ov={ov} feed={feed} watching={watching} onWatch={runWatcher} onOpen={openReg} onReview={review} busyTask={busyTask} />}
       {tab === "analyze" && <Analyze docs={docs} running={running} onRun={runAnalyze} onUploaded={loadDocs} setError={setError} />}
       {tab === "history" && <History regs={ov?.regulations} onOpen={openReg} onRefresh={safe(loadOverview)} />}
@@ -686,10 +699,13 @@ function Policies({ bank }) {
 }
 
 /* ================= สรุปประจำวัน (ธนาคารจริง) ================= */
-function Brief({ bank, me, setError }) {
+function Brief({ bank, me, setError, flash }) {
   const { t, lang, date, time } = useLang();
+  const users = useUsers(setError);
   const [data, setData] = useState(null);
   const [running, setRunning] = useState(false);
+  const [mailing, setMailing] = useState(false);
+  const [preview, setPreview] = useState("");
   const [busy, setBusy] = useState("");
 
   const load = useCallback(async () => {
@@ -714,11 +730,20 @@ function Brief({ bank, me, setError }) {
     } catch (e) { setError(e.message); return false; } finally { setBusy(""); }
   };
   const setStatus = (taskId, status) => saveTask(taskId, { status });
+  const emailTasks = async () => {
+    setMailing(true); setError("");
+    try {
+      const r = await fetch("/api/tasks/email", { method: "POST" });
+      const body = await r.json();
+      if (!r.ok) throw new Error(body.error);
+      flash(t.brief.emailSent(body.count, body.to.join(", ")));
+    } catch (e) { setError(e.message); } finally { setMailing(false); }
+  };
 
   if (!data) return <div className="card empty">{t.loading}</div>;
   const count = (st) => data.tasks.filter(x => x.status === st).length;
   const titleOfNotice = (packId) => data.notices.find(n => n.packId === packId)?.title || packId;
-  const staff = (id) => { const s = USERS.find(x => x.id === id); return s ? (lang === "en" ? s.nameEn : s.name) : id; };
+  const staff = (id) => { const s = users.find(x => x.id === id); return s ? (lang === "en" ? s.nameEn : s.name) : id; };
   const today = localDate();
   const isOverdue = (x) => ["pending_review", "open"].includes(x.status) && x.dueDate < today;
   const overdue = data.tasks.filter(isOverdue).length;
@@ -729,7 +754,10 @@ function Brief({ bank, me, setError }) {
       <section className="card">
         <div className="card-head">
           <div><h2 className="ht"><Icon name="radar" />{t.brief.title}</h2><p className="hint">{t.brief.hint}</p></div>
-          {me.role === "manager" && <button className="btn primary sm" onClick={runNow} disabled={running}><Icon name={running ? "refresh" : "play"} size={16} className={running ? "spin" : ""} />{running ? t.brief.running : t.brief.run}</button>}
+          <div className="row-btns">
+            <button className="btn sm" onClick={emailTasks} disabled={mailing}><Icon name={mailing ? "refresh" : "mail"} size={16} className={mailing ? "spin" : ""} />{mailing ? t.brief.emailing : me.role === "manager" ? t.brief.emailAll : t.brief.emailMine}</button>
+            {me.role === "manager" && <button className="btn primary sm" onClick={runNow} disabled={running}><Icon name={running ? "refresh" : "play"} size={16} className={running ? "spin" : ""} />{running ? t.brief.running : t.brief.run}</button>}
+          </div>
         </div>
         <p className="muted small">{data.lastRun ? t.brief.lastRun(time(data.lastRun.at), data.lastRun) : t.brief.never}</p>
         <p className="hint">{t.brief.publicNote} · {bank.sources.map((u, i) => <a key={u} href={u} target="_blank" rel="noreferrer">{t.brief.source} {i + 1} </a>)}</p>
@@ -757,13 +785,15 @@ function Brief({ bank, me, setError }) {
               <details key={n.packId} className="card notice">
                 <summary>
                   <b>{n.title}</b>
-                  <small className="muted">{date(n.date)} · <a href={n.pdfUrl} target="_blank" rel="noreferrer">{t.brief.pdf}</a></small>
+                  <small className="muted">{date(n.date)} · <a href={`/api/notices/${n.packId}/pdf`} target="_blank" rel="noreferrer">{t.brief.pdf}</a> · <a href={n.pdfUrl} target="_blank" rel="noreferrer">{t.brief.original}</a></small>
                   <span className="chips">
                     {n.queued && <span className="status">{t.brief.queued}</span>}
                     {r?.gaps && r.gaps.length === 0 && <span className="status covered">{t.brief.notApplicable}</span>}
                     {Object.entries(counts).map(([st, c]) => <span key={st} className={`status ${st}`}>{t.status[st]} {c}</span>)}
                   </span>
                 </summary>
+                <button className="btn sm" onClick={() => setPreview(p => (p === n.packId ? "" : n.packId))}><Icon name="eye" size={16} />{preview === n.packId ? t.brief.hidePreview : t.brief.preview}</button>
+                {preview === n.packId && <iframe className="pdf-view" src={`/api/notices/${n.packId}/pdf`} title={n.title} />}
                 {r?.error && <p className="reason">{r.error}</p>}
                 {r?.summary && <p>{r.summary}</p>}
                 {(r?.obligations || []).map((ob, i) => {
@@ -813,9 +843,11 @@ function Brief({ bank, me, setError }) {
 /* ================= เข้าสู่ระบบ ================= */
 function Login({ onDone }) {
   const { t, lang, setLang } = useLang();
-  const [userId, setUserId] = useState(USERS[0].id);
-  const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const users = useUsers(setError);
+  const [picked, setUserId] = useState("");
+  const userId = picked || users[0]?.id || "";
+  const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
 
   const submit = async (e) => {
@@ -839,12 +871,12 @@ function Login({ onDone }) {
         <p className="hint">{t.auth.hint}</p>
         <label className="field"><span>{t.auth.user}</span>
           <select value={userId} onChange={e => setUserId(e.target.value)}>
-            {USERS.map(u => <option key={u.id} value={u.id}>{lang === "en" ? u.nameEn : u.name} · {t.auth.role[u.role]}</option>)}
+            {users.map(u => <option key={u.id} value={u.id}>{lang === "en" ? u.nameEn : u.name} · {t.auth.role[u.role]}</option>)}
           </select>
         </label>
         <label className="field"><span>{t.auth.password}</span><input type="password" value={password} onChange={e => setPassword(e.target.value)} autoComplete="current-password" required /></label>
         {error && <p className="alert">{error}</p>}
-        <button className="btn primary" disabled={busy}>{t.auth.submit}</button>
+        <button className="btn primary" disabled={busy || !userId}>{t.auth.submit}</button>
       </form>
     </div>
   );
