@@ -290,6 +290,11 @@ dt { color: var(--muted); } dd { margin: 0; }
 .login.overlay { position: fixed; inset: 0; min-height: 0; z-index: 50; background: rgba(15, 23, 42, .45); }
 .row-btns { display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
 .pdf-view { width: 100%; height: 75vh; border: 1px solid var(--line); border-radius: 8px; margin: 8px 0; background: #fff; }
+.filters { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+.filters .search { flex: 1 1 160px; min-width: 0; }
+.grid-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 0 12px; align-items: end; }
+.grid-form .row-btns { grid-column: 1 / -1; margin-top: 10px; }
+.table tr.muted td { opacity: .6; }
 
 /* ---------- พิมพ์ / บันทึก PDF ---------- */
 @media print {

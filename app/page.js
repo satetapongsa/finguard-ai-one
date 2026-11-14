@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { storeApi, resetDemo } from "./store";
 import { useLang } from "./i18n";
 import { ownerName, policyText } from "../lib/policies";
+import { DEPTS } from "../lib/staff";
 import { BANKS, getBank } from "../lib/banks";
 
 const ALERT_ICON = { new: "megaphone", risk: "alert", done: "check", error: "xcircle" };
@@ -66,6 +67,7 @@ const fetchUsers = () => (usersRequest ||= fetch("/api/users").then(async r => {
   if (!r.ok) { usersRequest = null; throw new Error(data.error); }
   return data;
 }));
+const clearUsersCache = () => { usersRequest = null; };
 function useUsers(onError) {
   const [users, setUsers] = useState([]);
   useEffect(() => { fetchUsers().then(setUsers).catch(e => onError?.(e.message)); }, [onError]);
@@ -229,7 +231,7 @@ export default function Home() {
       {ai && !ai.ai && <div className="demo-banner">{t.noKey}</div>}
 
       <nav className="nav">
-        {NAV.map(([k, icon]) => (
+        {[...NAV, ...(me.role === "manager" ? [["users", "users"]] : [])].map(([k, icon]) => (
           <button key={k} className={tab === k || (tab === "detail" && k === "history") ? "on" : ""} onClick={() => setTab(k)}><Icon name={icon} size={17} />{k === "dash" && bank.real ? t.brief.nav : t.nav[k]}</button>
         ))}
       </nav>
@@ -243,6 +245,7 @@ export default function Home() {
       {tab === "history" && <History regs={ov?.regulations} onOpen={openReg} onRefresh={safe(loadOverview)} />}
       {tab === "docs" && <Docs docs={docs} onRefresh={safe(loadDocs)} setError={setError} onAnalyze={(d) => { setTab("analyze"); setTimeout(() => window.dispatchEvent(new CustomEvent("fg-doc", { detail: d })), 0); }} />}
       {tab === "policies" && <Policies bank={bank} />}
+      {tab === "users" && me.role === "manager" && <UsersAdmin me={me} setError={setError} flash={flash} />}
       {tab === "detail" && <Detail d={detail} onBack={() => setTab("history")} onReview={review} busyTask={busyTask} />}
     </div>
   );
@@ -706,6 +709,7 @@ function Brief({ bank, me, setError, flash }) {
   const [running, setRunning] = useState(false);
   const [mailing, setMailing] = useState(false);
   const [preview, setPreview] = useState("");
+  const [filter, setFilter] = useState({ status: "all", who: "all", q: "" });
   const [busy, setBusy] = useState("");
 
   const load = useCallback(async () => {
@@ -747,7 +751,12 @@ function Brief({ bank, me, setError, flash }) {
   const today = localDate();
   const isOverdue = (x) => ["pending_review", "open"].includes(x.status) && x.dueDate < today;
   const overdue = data.tasks.filter(isOverdue).length;
-  const tasks = [...data.tasks].sort((a, b) => ["pending_review", "open", "done", "rejected"].indexOf(a.status) - ["pending_review", "open", "done", "rejected"].indexOf(b.status));
+  const q = filter.q.trim().toLowerCase();
+  const shown = data.tasks.filter(x =>
+    (filter.status === "all" || (filter.status === "overdue" ? isOverdue(x) : x.status === filter.status)) &&
+    (filter.who === "all" || x.assignee === filter.who) &&
+    (!q || `${x.action} ${titleOfNotice(x.packId)} ${staff(x.assignee)}`.toLowerCase().includes(q)));
+  const tasks = [...shown].sort((a, b) => ["pending_review", "open", "done", "rejected"].indexOf(a.status) - ["pending_review", "open", "done", "rejected"].indexOf(b.status));
 
   return (
     <div className="stack">
@@ -812,8 +821,22 @@ function Brief({ bank, me, setError, flash }) {
       </section>
 
       <section className="card">
-        <h2 className="ht"><Icon name="users" />{t.brief.tasks} ({tasks.length})</h2>
-        {tasks.length === 0 && <p className="muted">{t.brief.noTasks}</p>}
+        <h2 className="ht"><Icon name="users" />{t.brief.tasks} ({tasks.length}{tasks.length !== data.tasks.length ? ` / ${data.tasks.length}` : ""})</h2>
+        <div className="filters">
+          <input className="search" type="search" placeholder={t.brief.search} value={filter.q} onChange={e => setFilter({ ...filter, q: e.target.value })} />
+          <select className="search" value={filter.status} onChange={e => setFilter({ ...filter, status: e.target.value })} aria-label={t.brief.filterStatus}>
+            <option value="all">{t.brief.allStatus}</option>
+            <option value="overdue">{t.brief.overdue}</option>
+            {Object.entries(t.brief.status).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+          </select>
+          {me.role === "manager" && (
+            <select className="search" value={filter.who} onChange={e => setFilter({ ...filter, who: e.target.value })} aria-label={t.brief.assignee}>
+              <option value="all">{t.brief.allPeople}</option>
+              {[...new Set(data.tasks.map(x => x.assignee))].map(id => <option key={id} value={id}>{staff(id)}</option>)}
+            </select>
+          )}
+        </div>
+        {tasks.length === 0 && <p className="muted">{data.tasks.length ? t.brief.noMatch : t.brief.noTasks}</p>}
         <div className="stack">
           {tasks.map(x => (
             <div key={x.taskId} className={`card task ${x.status}`}>
@@ -856,6 +879,7 @@ function Login({ onDone }) {
       const r = await fetch("/api/auth", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userId, password }) });
       const data = await r.json();
       if (!r.ok) throw new Error(data.error);
+      clearUsersCache(); // หลังล็อกอิน หัวหน้าเห็นรายชื่อทั้งหมด (รวมบัญชีที่ปิด)
       onDone(data);
     } catch (err) { setError(err.message); } finally { setBusy(false); }
   };
@@ -878,6 +902,92 @@ function Login({ onDone }) {
         {error && <p className="alert">{error}</p>}
         <button className="btn primary" disabled={busy || !userId}>{t.auth.submit}</button>
       </form>
+    </div>
+  );
+}
+
+/* ================= จัดการผู้ใช้ (หัวหน้า) ================= */
+const BLANK_USER = { name: "", nameEn: "", role: "staff", dept: DEPTS[0], password: "" };
+
+function UsersAdmin({ me, setError, flash }) {
+  const { t, lang } = useLang();
+  const [users, setUsers] = useState(null);
+  const [form, setForm] = useState(BLANK_USER);
+  const [resetId, setResetId] = useState("");
+  const [newPw, setNewPw] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  const call = async (method, body) => {
+    const r = await fetch("/api/users", { method, headers: { "Content-Type": "application/json" }, body: body && JSON.stringify(body) });
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.error);
+    return data;
+  };
+  const load = useCallback(() => call("GET").then(setUsers).catch(e => setError(e.message)), [setError]);
+  useEffect(() => { load(); }, [load]);
+  const run = async (fn, msg) => {
+    setBusy(true); setError("");
+    try { await fn(); clearUsersCache(); await load(); flash(msg); return true; }
+    catch (e) { setError(e.message); return false; } finally { setBusy(false); }
+  };
+
+  const add = async (e) => { e.preventDefault(); if (await run(() => call("POST", form), t.users.added(form.name))) setForm(BLANK_USER); };
+  const reset = async (e, u) => { e.preventDefault(); if (await run(() => call("PATCH", { id: u.id, password: newPw }), t.users.resetDone(u.name))) { setResetId(""); setNewPw(""); } };
+  const toggle = (u) => run(() => call("PATCH", { id: u.id, active: !u.active }), u.active ? t.users.disabled(u.name) : t.users.enabled(u.name));
+  const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
+
+  if (!users) return <div className="card empty">{t.loading}</div>;
+  return (
+    <div className="stack">
+      <section className="card">
+        <h2 className="ht"><Icon name="users" />{t.users.title} ({users.filter(u => u.active).length}/{users.length})</h2>
+        <p className="hint">{t.users.hint}</p>
+        <div className="table-wrap">
+          <table className="table static">
+            <thead><tr>{t.users.cols.map(c => <th key={c}>{c}</th>)}</tr></thead>
+            <tbody>
+              {users.map(u => (
+                <tr key={u.id} className={u.active ? "" : "muted"}>
+                  <td><b>{lang === "en" ? u.nameEn : u.name}</b><small className="muted">{u.id}</small></td>
+                  <td>{t.auth.role[u.role]}</td>
+                  <td>{ownerName(u.dept, lang)}</td>
+                  <td><span className={`status ${u.active ? "covered" : "missing"}`}>{u.active ? t.users.active : t.users.inactive}</span></td>
+                  <td>
+                    {resetId === u.id ? (
+                      <form className="row-inline" onSubmit={e => reset(e, u)}>
+                        <input className="search" type="password" placeholder={t.users.newPw} value={newPw} onChange={e => setNewPw(e.target.value)} minLength={8} required autoComplete="new-password" />
+                        <button className="btn sm primary" disabled={busy}>{t.brief.save}</button>
+                        <button type="button" className="btn sm" onClick={() => setResetId("")}>{t.auth.cancel}</button>
+                      </form>
+                    ) : (
+                      <div className="row-inline">
+                        <button className="btn sm" disabled={busy} onClick={() => { setResetId(u.id); setNewPw(""); }}>{t.users.reset}</button>
+                        {u.id !== me.id && <button className="btn sm" disabled={busy} onClick={() => toggle(u)}>{u.active ? t.users.disable : t.users.enable}</button>}
+                      </div>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section className="card">
+        <h2 className="ht"><Icon name="sparkle" />{t.users.add}</h2>
+        <form className="grid-form" onSubmit={add}>
+          <label className="field"><span>{t.users.name}</span><input value={form.name} onChange={set("name")} required maxLength={80} /></label>
+          <label className="field"><span>{t.users.nameEn}</span><input value={form.nameEn} onChange={set("nameEn")} maxLength={80} /></label>
+          <label className="field"><span>{t.users.cols[1]}</span>
+            <select value={form.role} onChange={set("role")}>{["staff", "manager"].map(r => <option key={r} value={r}>{t.auth.role[r]}</option>)}</select>
+          </label>
+          <label className="field"><span>{t.users.cols[2]}</span>
+            <select value={form.dept} onChange={set("dept")}>{DEPTS.map(d => <option key={d} value={d}>{ownerName(d, lang)}</option>)}</select>
+          </label>
+          <label className="field"><span>{t.users.firstPw}</span><input type="password" value={form.password} onChange={set("password")} minLength={8} required autoComplete="new-password" /></label>
+          <div className="row-btns"><button className="btn primary" disabled={busy}>{t.users.add}</button></div>
+        </form>
+      </section>
     </div>
   );
 }
